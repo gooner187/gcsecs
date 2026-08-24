@@ -23,7 +23,11 @@ body.j277-light{
   --hl-kw:#0000ff; --hl-bi:#795e26; --hl-str:#a31515; --hl-num:#098658; --hl-cm:#008000;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
-html,body{ height:100%; overflow:hidden; }
+/* NOTE: deliberately no html/body rules here. This file is often pasted
+   directly into a host CMS's "embed code" block (confirmed with Weebly)
+   rather than loaded via <iframe>, which means html/body selectors here
+   would style the HOST PAGE's real <html>/<body>, not a sandboxed copy.
+   Every rule below is scoped to #widgetRoot or its descendants instead. */
 body{
   background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif;
   transition:background .15s,color .15s;
