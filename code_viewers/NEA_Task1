@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NEA Task 1 — J277 Output Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
+<style>
+/* ============================================================
+   THEME — dark is default, light toggled via body.j277-light
+   (Identical to the J277 Code Editor's theme system — kept in
+   sync deliberately, same CSS vars, same fixes for the outer-
+   frame/border issues worked out there.)
+   ============================================================ */
+:root{
+  --bg:#0d0f14; --surface:#151820; --surface2:#1c2030; --border:#2a2f42;
+  --accent:#4f8ef7; --success:#3ecf8e; --error:#f06353; --warn:#f0997b;
+  --text:#e8eaf0; --text-muted:#7a8099;
+  --outer-border:transparent;
+}
+body.j277-light{
+  --bg:#ffffff; --surface:#ffffff; --surface2:#eef0f5; --border:#d7dbe4;
+  --accent:#2563eb; --success:#1a9c66; --error:#d1453b; --warn:#c5651f;
+  --text:#1b1f2a; --text-muted:#6b7280;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+/* NOTE: deliberately no html/body rules here — this file may end up pasted
+   directly into a host CMS's "embed code" block rather than loaded via
+   <iframe>, which would leak html/body selectors onto the HOST page's
+   real <html>/<body>. Every rule below is scoped to #widgetRoot instead. */
+body{
+  /* Deliberately NOT var(--bg) — see the Code Editor's own notes on this
+     exact mistake. Fixed white matches the actual host page regardless
+     of which theme is active, avoiding a visible dark/grey frame. */
+  background:#ffffff; color:var(--text); font-family:'DM Sans',sans-serif;
+  transition:background .15s,color .15s;
+}
+.wrap{ max-width:900px; margin:0 auto; padding:14px; }
+
+/* ── Full screen mode ───────────────────────────────────── */
+#widgetRoot:fullscreen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:-webkit-full-screen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot.j277-fs-fallback{
+  position:fixed; inset:0; z-index:9999; max-width:none; width:100vw; height:100vh;
+  margin:0; padding:0; display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:fullscreen .out-pane,
+#widgetRoot:-webkit-full-screen .out-pane,
+#widgetRoot.j277-fs-fallback .out-pane{ flex:1; min-height:0; }
+#widgetRoot:fullscreen .topbar, #widgetRoot:-webkit-full-screen .topbar, #widgetRoot.j277-fs-fallback .topbar{ border-radius:0; }
+#widgetRoot:fullscreen .ce-footer, #widgetRoot:-webkit-full-screen .ce-footer, #widgetRoot.j277-fs-fallback .ce-footer{ border-radius:0; }
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.topbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface2); border:0.5px solid var(--border); border-radius:10px 10px 0 0;
+  padding:8px 10px;
+  border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.title{
+  font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:var(--text);
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.title i{ color:var(--accent); font-size:15px; }
+.spacer{ flex:1; }
+.icon-btn{
+  display:inline-flex; align-items:center; gap:4px; border:0.5px solid var(--border);
+  border-radius:6px; padding:4px 9px; font-size:11px; color:var(--text-muted);
+  background:var(--surface); cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.icon-btn:hover{ color:var(--text); border-color:var(--accent); }
+.icon-btn i{ font-size:13px; }
+.run-btn{
+  background:rgba(79,142,247,0.12); border-color:var(--accent); color:var(--accent); font-weight:600;
+}
+.font-row{ display:flex; align-items:center; gap:2px; border:0.5px solid var(--border); border-radius:6px; padding:2px 6px; }
+.font-row span{ font-size:11px; color:var(--text-muted); min-width:26px; text-align:center; }
+.font-row button{ border:none; background:none; font-size:13px; color:var(--text-muted); cursor:pointer; padding:0 3px; }
+.font-row button:hover{ color:var(--text); }
+
+/* ── Output area (full width — no editor pane in this widget) ── */
+.out-pane{
+  border:0.5px solid var(--border); border-top:none; background:var(--surface2);
+  display:flex; flex-direction:column; min-height:280px;
+  border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.pane-lbl{
+  font-size:9px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
+}
+.output{
+  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  background:var(--surface2); flex:1; overflow:auto; white-space:pre-wrap; color:var(--text);
+}
+.out-ok{ color:var(--success); }
+.out-err{ color:var(--error); }
+.out-muted{ color:var(--text-muted); }
+
+/* ── Footer status bar ──────────────────────────────────── */
+.ce-footer{
+  padding:6px 10px; border:0.5px solid var(--border); border-top:none; border-radius:0 0 10px 10px;
+  display:flex; align-items:center; justify-content:space-between; background:var(--surface2);
+  border-bottom-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.footer-left{ display:flex; align-items:center; gap:6px; }
+.dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
+.dot-err{ background:var(--error); }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+
+/* Infinite-loop / warning panel (identical to the Code Editor's) */
+.warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
+.warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:'Space Mono',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
+.warn-btn{
+  display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
+  font-weight:600; border:0.5px solid var(--warn); background:rgba(240,153,123,0.15); color:var(--warn);
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.warn-btn-plain{
+  border:0.5px solid var(--border); background:var(--surface); color:var(--text-muted); font-weight:400;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="widgetRoot">
+  <div class="topbar">
+    <div class="title"><i class="ti ti-player-play" aria-hidden="true"></i><span id="taskTitleEl">NEA Task 1</span></div>
+    <div class="spacer"></div>
+    <div class="font-row">
+      <button id="fontDown" title="Smaller text">A-</button>
+      <span id="fontSizeLbl">12px</span>
+      <button id="fontUp" title="Larger text">A+</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" title="Toggle light/dark mode">
+      <i class="ti ti-moon" aria-hidden="true" id="themeIcon"></i><span id="themeLbl">Dark</span>
+    </button>
+    <button class="icon-btn" id="fsBtn" title="Full screen">
+      <i class="ti ti-maximize" aria-hidden="true" id="fsIcon"></i><span id="fsLbl">Full screen</span>
+    </button>
+    <button class="icon-btn run-btn" id="runBtn" title="Run">
+      <i class="ti ti-player-play" aria-hidden="true"></i>Run
+    </button>
+  </div>
+
+  <div class="out-pane" id="outputPane">
+    <div class="pane-lbl">Output</div>
+    <div class="output" id="output"><div class="out-muted">Click Run to see what this program does.</div></div>
+  </div>
+
+  <div class="ce-footer">
+    <div class="footer-left">
+      <div class="dot" id="statusDot"></div>
+      <span class="footer-txt" id="statusTxt">Python 3.12 · Pyodide · ready</span>
+    </div>
+    <span class="hint">No code shown — this is a demo of the finished program</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   PAGE ID — used to namespace this demo's localStorage (theme
+   preference only — there's no student-typed code to save in
+   this widget). Same automatic-from-URL approach as the Code
+   Editor, for the same reason: nothing to remember to edit.
+   ============================================================ */
+var PAGE_ID = (function () {
+  try {
+    var path = window.location.pathname || "default";
+    return path.replace(/[^a-zA-Z0-9_-]/g, "_") || "default";
+  } catch (e) { return "default"; }
+})();
+
+/* ============================================================
+   TASK IDENTITY — the one thing to change when duplicating this
+   file for the next task demo (Task 2, Task 3, ...).
+   ============================================================ */
+var TASK_TITLE = "NEA Task 1";        // shown in the tab title + topbar heading
+
+document.title = TASK_TITLE + " — J277 Output Viewer";
+document.getElementById("taskTitleEl").textContent = TASK_TITLE;
+
+/* ============================================================
+   HIDDEN DEMO SOURCE
+   ------------------------------------------------------------
+   Real Task 1 content, from the downloaded trinket export
+   (main.py + metadata.json, shortCode f8d54a6f6c, "NEA 2017
+   Task1"). Matches exactly the trinket embed already live on
+   https://www.gcsecs.com/neaprojects.html for Task 1. A genuine
+   working demo, not a bug-hunt exercise — verified end-to-end
+   with a real local Python run, including the recursive
+   welcome()/LeagueReg() loop that intentionally starts a new
+   registration after a successful "Y" confirmation. Five
+   sequential input() calls per pass, good real-world exercise
+   for the inline input UI. Preserved exactly as exported.
+
+   Same code-hiding caveat as before: this is not visible in the
+   normal UI (no editor pane, no Save button), but a determined
+   visitor could still find it via browser DevTools — see chat
+   with Andy for the full tradeoff explanation.
+   ============================================================ */
+var DEMO_SOURCE =
+"def welcome():\n" +
+"    print(\"League registration\")\n" +
+"    LeagueReg()\n" +
+"\n" +
+"def LeagueReg():\n" +
+"    firstName = input(str(\"Enter first name: >>> \"))\n" +
+"    nickName = input(str(\"Enter nickname: >>> \"))\n" +
+"    email = input(str(\"Enter email address: >>> \"))\n" +
+"    skillLevel = input(str(\"Enter skill level - E for expert or C for casual : >>> \")).upper()\n" +
+"    print(\"Please review your details\\n\")\n" +
+"    print (\"first name is\",firstName)\n" +
+"    print (\"Nickname is\",nickName)\n" +
+"    print (\"Email address is\",email)\n" +
+"    if skillLevel == \"E\":\n" +
+"        print(\"Skill level is Expert\")\n" +
+"    else:\n" +
+"        print(\"Skill level is Casual\\n\")\n" +
+"\n" +
+"    confirm = input(str(\"please confirm that these details are correct- Y/N\")).upper()\n" +
+"    if confirm == \"Y\":\n" +
+"        print(\"Many thanks\")\n" +
+"        welcome()\n" +
+"    else:\n" +
+"        print(\"Please re-enter all the personal details again\")\n" +
+"        LeagueReg()\n" +
+"welcome()\n";
+
+/* ============================================================
+   HIDDEN DEMO FILES (optional)
+   ------------------------------------------------------------
+   Some NEA tasks need text files (Task 3 on the real site reads
+   fixtures/results files). If a demo needs one, add it here as
+   {filename: content} — it gets written into Pyodide's virtual
+   filesystem before every run, exactly like the Code Editor does
+   for its own text-file tabs, just with no visible UI for it
+   since there's nothing for a visitor to manage or see. Leave
+   empty ({}) if the demo doesn't need any files.
+   ============================================================ */
+var DEMO_FILES = {};
+
+/* ============================================================
+   PYODIDE LOADING (identical to the Code Editor)
+   ============================================================ */
+var pyodideReady = false, pyodideLoading = false, pyodideInstance = null;
+
+function loadPyodideIfNeeded() {
+  return new Promise(function (resolve, reject) {
+    if (pyodideReady) { resolve(pyodideInstance); return; }
+    if (pyodideLoading) {
+      var iv = setInterval(function () {
+        if (pyodideReady) { clearInterval(iv); resolve(pyodideInstance); }
+      }, 200);
+      return;
+    }
+    pyodideLoading = true;
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+    script.onload = function () {
+      loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" }).then(function (py) {
+        pyodideInstance = py; pyodideReady = true; pyodideLoading = false; resolve(py);
+      }).catch(reject);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   PRE-RUN INFINITE LOOP SCANNER (static check, no execution) —
+   runs against DEMO_SOURCE. Not there to protect a student typing
+   code (there's nothing for them to type here) — it's a safety
+   net for whoever is AUTHORING the hidden demo, same friendly
+   panel instead of a frozen tab if a `while True` slips in.
+   ============================================================ */
+function detectInfiniteLoop(code) {
+  var lines = code.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i], trimmed = line.trim();
+    if (/^while\s+(True|1)\s*:/.test(trimmed)) {
+      return "while True: always runs forever — it has no condition that can become False.";
+    }
+    var m = trimmed.match(/^while\s+(\w+)\s*([!=<>]=?|==)\s*(.+?)\s*:/);
+    if (m) {
+      var condVar = m[1];
+      var indent = line.match(/^(\s*)/)[1].length;
+      var body = [];
+      for (var j = i + 1; j < lines.length; j++) {
+        var bl = lines[j];
+        if (bl.trim() === "") continue;
+        var bi = bl.match(/^(\s*)/)[1].length;
+        if (bi <= indent) break;
+        body.push(bl);
+      }
+      if (body.length === 0) continue;
+      var assignRe = new RegExp("\\b" + condVar + "\\s*[+\\-*/%&|^]?=(?!=)");
+      var inputRe = new RegExp("\\b" + condVar + "\\s*=.*input\\s*\\(");
+      var modified = body.some(function (bl) { return assignRe.test(bl) || inputRe.test(bl); });
+      if (!modified) {
+        return "The variable \"" + condVar + "\" in the while condition is never changed inside the loop — so the condition never becomes False.";
+      }
+    }
+  }
+  return null;
+}
+
+/* ============================================================
+   WIRE UP THE DOM
+   ============================================================ */
+var output = document.getElementById("output");
+var statusDot = document.getElementById("statusDot");
+var statusTxt = document.getElementById("statusTxt");
+var runBtn = document.getElementById("runBtn");
+var themeToggle = document.getElementById("themeToggle");
+var themeIcon = document.getElementById("themeIcon");
+var themeLbl = document.getElementById("themeLbl");
+var fontUp = document.getElementById("fontUp");
+var fontDown = document.getElementById("fontDown");
+var fontSizeLbl = document.getElementById("fontSizeLbl");
+
+var THEME_KEY = "j277_embed_theme"; // shared with the Code Editor — one theme preference site-wide
+var currentFontSize = 12;
+
+function applyFontSize() {
+  fontSizeLbl.textContent = currentFontSize + "px";
+  output.style.fontSize = currentFontSize + "px";
+}
+fontUp.addEventListener("click", function () { currentFontSize = Math.min(20, currentFontSize + 1); applyFontSize(); });
+fontDown.addEventListener("click", function () { currentFontSize = Math.max(9, currentFontSize - 1); applyFontSize(); });
+
+/* ── Light / dark mode toggle (identical to the Code Editor) ── */
+function applyTheme(light) {
+  document.body.classList.toggle("j277-light", light);
+  themeIcon.className = light ? "ti ti-sun" : "ti ti-moon";
+  themeLbl.textContent = light ? "Light" : "Dark";
+  try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (e) {}
+}
+themeToggle.addEventListener("click", function () {
+  applyTheme(!document.body.classList.contains("j277-light"));
+});
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+  if (saved === "light") applyTheme(true);
+  else if (saved === "dark") applyTheme(false);
+  else applyTheme(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+})();
+
+/* ============================================================
+   RUN — executes the fixed DEMO_SOURCE, never anything the
+   visitor supplies. Same wrapping/error-cleaning approach as the
+   Code Editor, just always running the same hidden program.
+   ============================================================ */
+runBtn.addEventListener("click", function () {
+  var code = DEMO_SOURCE;
+
+  var loopWarning = detectInfiniteLoop(code);
+  if (loopWarning) {
+    output.innerHTML = "";
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "infinite loop detected";
+    var panel = document.createElement("div");
+    panel.className = "warn-panel";
+    panel.innerHTML =
+      '<div class="warn-head">\u26A0\uFE0F This demo\u2019s code might run forever</div>' +
+      '<div class="warn-detail"></div>';
+    panel.querySelector(".warn-detail").textContent = loopWarning + " (This is a problem in the hidden demo source — check DEMO_SOURCE.)";
+    output.appendChild(panel);
+    return;
+  }
+
+  output.innerHTML = '<div class="out-muted">Running\u2026</div>';
+  statusDot.classList.remove("dot-err");
+  statusTxt.textContent = pyodideReady ? "running\u2026" : "loading Python runtime\u2026";
+  runBtn.disabled = true;
+
+  loadPyodideIfNeeded().then(async function (py) {
+    output.innerHTML = "";
+    statusDot.classList.remove("dot-err");
+    statusTxt.textContent = "running\u2026";
+
+    // Write any demo files into Pyodide's virtual filesystem before running.
+    Object.keys(DEMO_FILES).forEach(function (filename) {
+      try { py.FS.writeFile(filename, DEMO_FILES[filename]); } catch (e) { console.warn("FS write failed:", e); }
+    });
+
+    var inputResolve = null;
+    function makeInlineInput(promptText) {
+      return new Promise(function (resolve) {
+        inputResolve = resolve;
+        var row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:baseline;gap:4px;margin:1px 0;flex-wrap:wrap;";
+        if (promptText) {
+          var span = document.createElement("span");
+          span.style.cssText = "color:var(--text);font-family:'Space Mono',monospace;white-space:pre;";
+          span.textContent = promptText;
+          row.appendChild(span);
+        }
+        var inp = document.createElement("input");
+        inp.type = "text";
+        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
+        inp.setAttribute("autocomplete", "off"); inp.setAttribute("spellcheck", "false");
+        row.appendChild(inp);
+        output.appendChild(row);
+        output.scrollTop = output.scrollHeight;
+        setTimeout(function () { inp.focus(); }, 30);
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var val = inp.value; inp.remove();
+            var typed = document.createElement("span");
+            typed.style.cssText = "color:var(--success);font-family:'Space Mono',monospace;";
+            typed.textContent = val;
+            row.appendChild(typed);
+            output.scrollTop = output.scrollHeight;
+            if (inputResolve) { inputResolve(val); inputResolve = null; }
+          }
+        });
+      });
+    }
+
+    var _outLines = 0, MAX_OUT = 200;
+    py.setStdout({ batched: function (s) {
+      s.split("\n").forEach(function (line, i, arr) {
+        if (i === arr.length - 1 && line === "") return;
+        if (_outLines >= MAX_OUT) {
+          if (_outLines === MAX_OUT) {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-family:'Space Mono',monospace;color:var(--warn);font-style:italic;";
+            cap.textContent = "\u2026 output capped at " + MAX_OUT + " lines\u2026";
+            output.appendChild(cap);
+          }
+          _outLines++; return;
+        }
+        var d = document.createElement("div");
+        d.className = "out-ok";
+        d.textContent = line;
+        output.appendChild(d);
+        _outLines++;
+      });
+      output.scrollTop = output.scrollHeight;
+    }});
+    py.setStderr({ batched: function (s) {
+      var translated = s.replace(/<exec>:(\d+):/g, function (whole, numStr) {
+        var n = parseInt(numStr, 10);
+        if (typeof WRAPPER_HEADER_LINES !== "undefined" && n > WRAPPER_HEADER_LINES && n <= WRAPPER_HEADER_LINES + demoLines.length) {
+          return "line " + (n - WRAPPER_HEADER_LINES) + ":";
+        }
+        return whole;
+      });
+      var d = document.createElement("div");
+      d.className = "out-err";
+      d.textContent = translated;
+      output.appendChild(d);
+      output.scrollTop = output.scrollHeight;
+    }});
+
+    /* ============================================================
+       INPUT() BRIDGE — real JSPI-based inline UI when the browser
+       and Pyodide support it, automatic fallback to window.prompt()
+       when they don't.
+       ------------------------------------------------------------
+       JavaScript Promise Integration (JSPI) is what makes it possible
+       for Python's *synchronous* input() to genuinely await our async,
+       Promise-returning makeInlineInput() UI, via Pyodide's run_sync()
+       (docs: https://blog.pyodide.org/posts/jspi/). This is a new web
+       standard (finished April 2025; Chrome 137+, May 2025) and Pyodide
+       only fully integrates it from v0.27.7 onward — NOT universally
+       available yet (no default Firefox/Safari support as of when this
+       was written), so detecting support and falling back cleanly is
+       essential, not optional. can_run_sync() is Pyodide's own official
+       feature-detection function for exactly this.
+       ============================================================ */
+    var canRunSync = false;
+    try {
+      canRunSync = await py.runPythonAsync("from pyodide.ffi import can_run_sync; can_run_sync()");
+    } catch (e) {
+      canRunSync = false; // older Pyodide without can_run_sync, or JSPI unsupported in this browser
+    }
+
+    var STEP_LIMIT = 10000;
+    var jsInputFn, wrapperHeader;
+
+    if (canRunSync) {
+      // Real inline UI path. _js_input returns a genuine JS Promise
+      // (makeInlineInput's own return value, untouched) — run_sync()
+      // on the Python side blocks on that Promise via stack switching,
+      // so input() looks perfectly synchronous to the demo/student code
+      // even though the UI itself is non-blocking underneath.
+      jsInputFn = py.toPy(function (promptText) { return makeInlineInput(promptText); });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "from pyodide.ffi import run_sync\n" +
+        "_original_input = builtins.input\n" +
+        "async def _async_input(prompt):\n" +
+        "    return str(await _js_input(prompt))\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return run_sync(_async_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n";
+      statusTxt.textContent = "Python 3.12 · Pyodide · running (inline input)\u2026";
+    } else {
+      // Fallback path — unchanged from before, proven to work everywhere.
+      jsInputFn = py.toPy(function (promptText) {
+        var result = window.prompt(promptText || "");
+        return result === null ? "" : String(result);
+      });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "_original_input = builtins.input\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return str(_js_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n";
+      statusTxt.textContent = "Python 3.12 · Pyodide · running (popup input)\u2026";
+    }
+    py.globals.set("_js_input", jsInputFn);
+
+    // WRAPPER_HEADER_LINES is computed from whichever header string was
+    // actually used above — correct automatically for either branch,
+    // since the two headers have different line counts.
+    var WRAPPER_HEADER_LINES = wrapperHeader.split("\n").length - 1;
+    var demoLines = code.split("\n");
+    var wrapped =
+      wrapperHeader +
+      demoLines.map(function (l) { return "    " + l; }).join("\n") + "\n" +
+      "finally:\n" +
+      "    sys.settrace(None)\n" +
+      "    builtins.input = _original_input\n";
+
+    try {
+      await py.runPythonAsync(wrapped);
+      if (!output.children.length) output.innerHTML = '<div class="out-muted">No output.</div>';
+      statusDot.classList.remove("dot-err");
+      statusTxt.textContent = "Python 3.12 · done";
+    } catch (err) {
+      var raw = err.message || String(err);
+      var cleaned = (function (rawMsg) {
+        var studentRangeStart = WRAPPER_HEADER_LINES + 1;
+        var studentRangeEnd = WRAPPER_HEADER_LINES + demoLines.length;
+        var lines = rawMsg.split("\n");
+        var lineNum = null, srcCode = [], errorType = "";
+        var i = 0;
+        while (i < lines.length) {
+          var t = lines[i].trim();
+          if (!t || t === "Traceback (most recent call last):") { i++; continue; }
+          var fileM = t.match(/^File "([^"]*)", line (\d+)/);
+          if (fileM) {
+            var rawLine = parseInt(fileM[2], 10);
+            var isDemoFrame = fileM[1] === "<exec>" && rawLine >= studentRangeStart && rawLine <= studentRangeEnd;
+            if (isDemoFrame) lineNum = rawLine - WRAPPER_HEADER_LINES;
+            i++;
+            if (i < lines.length) {
+              var codeLineTrim = lines[i].trim();
+              var isFrameOrErrorLine = /^File "/.test(codeLineTrim) ||
+                /^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(codeLineTrim);
+              if (codeLineTrim && !isFrameOrErrorLine) {
+                if (isDemoFrame) srcCode.push(lines[i]);
+                i++;
+                if (i < lines.length && /^\^+$/.test(lines[i].trim())) i++;
+              }
+            }
+            continue;
+          }
+          if (/^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(t)) {
+            errorType = t; i++; continue;
+          }
+          i++;
+        }
+        var parts = [];
+        if (errorType) parts.push(lineNum ? "Line " + lineNum + " (in the hidden demo source) — " + errorType : errorType);
+        if (srcCode.length > 0) parts.push(srcCode.join("\n").trim());
+        if (parts.length === 0) return (rawMsg.split("\n").filter(function (l) { return l.trim(); }).pop() || rawMsg).trim();
+        return parts.join("\n");
+      })(raw);
+
+      if (cleaned.indexOf("__INFINITE_LOOP__") !== -1) {
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "infinite loop detected";
+        var loopPanel = document.createElement("div");
+        loopPanel.className = "warn-panel";
+        loopPanel.innerHTML =
+          '<div class="warn-head">\u26A0\uFE0F This demo seems to be running forever\u2026</div>' +
+          '<div class="warn-detail">Stopped after ' + STEP_LIMIT.toLocaleString() + " steps. This is a bug in the hidden demo source, not something a visitor caused.</div>";
+        output.appendChild(loopPanel);
+      } else if (cleaned.indexOf("SystemExit") === -1) {
+        var d = document.createElement("div");
+        d.className = "out-err";
+        d.style.cssText = "font-family:'Space Mono',monospace;white-space:pre-wrap;";
+        d.textContent = cleaned.trim();
+        output.appendChild(d);
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "error";
+      } else {
+        statusTxt.textContent = "Python 3.12 · done";
+      }
+    }
+    runBtn.disabled = false;
+  }).catch(function (err) {
+    output.innerHTML = '<div class="out-err">Could not load Python runtime: ' + err.message + "</div>";
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "load failed";
+    runBtn.disabled = false;
+  });
+});
+
+/* ============================================================
+   FULL SCREEN (identical to the Code Editor)
+   ============================================================ */
+(function initFullscreen() {
+  var widgetRoot = document.getElementById("widgetRoot");
+  var fsBtn = document.getElementById("fsBtn");
+  var fsIcon = document.getElementById("fsIcon");
+  var fsLbl = document.getElementById("fsLbl");
+  var isFallbackExpanded = false;
+
+  function setBtnState(isFull) {
+    fsIcon.className = isFull ? "ti ti-x" : "ti ti-maximize";
+    fsLbl.textContent = isFull ? "Exit full screen" : "Full screen";
+    fsBtn.title = isFull ? "Exit full screen (Esc)" : "Full screen";
+  }
+  function enterFullscreen() {
+    if (widgetRoot.requestFullscreen) {
+      widgetRoot.requestFullscreen().then(function () { setBtnState(true); }).catch(expandFallback);
+    } else if (widgetRoot.webkitRequestFullscreen) {
+      widgetRoot.webkitRequestFullscreen();
+      setBtnState(true);
+    } else {
+      expandFallback();
+    }
+  }
+  function expandFallback() {
+    isFallbackExpanded = true;
+    widgetRoot.classList.add("j277-fs-fallback");
+    setBtnState(true);
+  }
+  function exitFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    if (isFallbackExpanded) {
+      widgetRoot.classList.remove("j277-fs-fallback");
+      isFallbackExpanded = false;
+    }
+    setBtnState(false);
+  }
+  document.addEventListener("fullscreenchange", function () {
+    if (!document.fullscreenElement) setBtnState(false);
+  });
+  document.addEventListener("webkitfullscreenchange", function () {
+    if (!document.webkitFullscreenElement) setBtnState(false);
+  });
+  fsBtn.addEventListener("click", function () {
+    if (document.fullscreenElement || document.webkitFullscreenElement || isFallbackExpanded) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  });
+})();
+
+/* ============================================================
+   AUTO-RESIZE (identical to the Code Editor)
+   ============================================================ */
+(function initAutoResize() {
+  var lastSentHeight = 0;
+  function currentHeight() {
+    return Math.ceil(document.getElementById("widgetRoot").getBoundingClientRect().height);
+  }
+  function postHeight(h) {
+    try {
+      window.parent.postMessage({ source: "j277-code-widget", pageId: PAGE_ID, height: h }, "*");
+    } catch (e) {}
+  }
+  function sendHeightIfChanged() {
+    var h = currentHeight();
+    if (h === lastSentHeight) return;
+    lastSentHeight = h;
+    postHeight(h);
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { sendHeightIfChanged(); }).observe(document.getElementById("widgetRoot"));
+  } else {
+    setInterval(sendHeightIfChanged, 500);
+  }
+  window.addEventListener("resize", sendHeightIfChanged);
+  var retries = 0;
+  var retryTimer = setInterval(function () {
+    var h = currentHeight();
+    lastSentHeight = h;
+    postHeight(h);
+    retries++;
+    if (retries >= 20) clearInterval(retryTimer);
+  }, 1000);
+})();
+
+/* ── Init ──────────────────────────────────────────────────── */
+applyFontSize();
+</script>
+</body>
+</html>
