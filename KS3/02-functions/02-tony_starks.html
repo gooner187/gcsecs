@@ -181,7 +181,7 @@ body{
 .hl-wrap{ position:relative; flex:1; overflow:hidden; background:var(--bg); min-height:0; }
 .hl-overlay{
   position:absolute; inset:0; font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px;
-  pointer-events:none; white-space:pre-wrap; word-wrap:break-word; tab-size:4; overflow:hidden;
+  pointer-events:none; white-space:pre; tab-size:4; overflow:hidden;
   color:var(--text);
 }
 .hl-overlay .hl-kw{ color:var(--hl-kw); }
@@ -193,7 +193,7 @@ body{
   font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px; color:transparent;
   background:transparent; caret-color:var(--text); border:none; outline:none; resize:none;
   width:100%; height:100%; tab-size:4; position:relative; z-index:1;
-  overflow-y:auto; overflow-x:hidden; box-sizing:border-box;
+  overflow-y:auto; overflow-x:auto; white-space:pre; box-sizing:border-box;
 }
 .out-pane{ border-left:0.5px solid var(--border); }
 .output{
@@ -274,7 +274,7 @@ body{
         <div class="line-nums" id="lineNums">1</div>
         <div class="hl-wrap">
           <div class="hl-overlay" id="hlOverlay" aria-hidden="true"></div>
-          <textarea class="code-ta" id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+          <textarea class="code-ta" id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
         </div>
       </div>
     </div>
