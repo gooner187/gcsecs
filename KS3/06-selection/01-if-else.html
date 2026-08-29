@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>If/Else Sandbox — J277 Code Editor</title>
+<title>Sandbox — J277 Code Editor</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
 <style>
@@ -240,7 +240,7 @@ body{
 
 <div class="wrap" id="widgetRoot">
   <div class="topbar">
-    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">If/Else Sandbox</span></div>
+    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">Sandbox</span></div>
     <div class="spacer"></div>
     <div class="font-row">
       <button id="fontDown" title="Smaller text">A-</button>
@@ -269,7 +269,7 @@ body{
 
   <div class="ce-body" id="ceBody">
     <div class="pane" id="editorPane" style="flex:1.35;">
-      <div class="pane-lbl" id="editorPaneLbl">if_else_sandbox.py</div>
+      <div class="pane-lbl" id="editorPaneLbl">sandbox.py</div>
       <div class="editor-area">
         <div class="line-nums" id="lineNums">1</div>
         <div class="hl-wrap">
@@ -330,8 +330,8 @@ var PAGE_ID = (function () {
    the rest of the file for "Challenge 1" / "array_challenge_1"
    by hand, it's no longer hardcoded anywhere else.
    ============================================================ */
-var CHALLENGE_TITLE = "If/Else Sandbox";        // shown in the tab title + topbar heading
-var CHALLENGE_FILENAME = "if_else_sandbox";     // used for the .py filename everywhere (no extension)
+var CHALLENGE_TITLE = "Sandbox";        // shown in the tab title + topbar heading
+var CHALLENGE_FILENAME = "sandbox";     // used for the .py filename everywhere (no extension)
 
 document.title = CHALLENGE_TITLE + " — J277 Code Editor";
 document.getElementById("challengeTitleEl").textContent = CHALLENGE_TITLE;
@@ -340,18 +340,19 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   If/Else Sandbox — content supplied directly in chat. Same
-   open-ended, free-form pattern as the plain Sandbox, just
-   themed toward if/else selection this time — no bug to find, no
-   blank to fill in. Verified with a real Python run: comments-
-   only, runs cleanly with no output/error, same "No output."
-   fallback behaviour.
-   Preserved exactly as pasted, including "Goodluck" as one word.
+   Sandbox — content supplied directly in chat. An open-ended,
+   free-form exercise, not a targeted lesson like the others in
+   this series — no bug to find, no blank to fill in, just an
+   invitation for the student to write whatever they like.
+   Verified with a real Python run: comments-only, runs cleanly
+   with no output/error, same as Comments Challenge 1's "No
+   output." fallback behaviour.
+   Preserved exactly as pasted, including the "!!!!!" emphasis.
    ============================================================ */
 var STARTER_CODE =
-"# Hello!\n" +
-"# Please try IF/Else selection code here\n" +
-"# Goodluck!\n";
+"# Write code in here!!!!!\n" +
+"# ...and then test it!\n" +
+"# Good luck\n";
 
 /* ============================================================
    FILE TABS — the main Python file + any added text files.
@@ -1003,6 +1004,19 @@ runBtn.addEventListener("click", function () {
     var STEP_LIMIT = 10000;
     var jsInputFn, wrapperHeader;
 
+    /* FIX: both wrapper headers below end in "try:\n    pass\n" — the extra
+       "pass" is deliberate, not a leftover. Confirmed with a real Python
+       compile test that a comments-only (or genuinely empty) student body,
+       once indented inside our try: block, does NOT satisfy Python's
+       requirement that a try: block contain at least one real statement —
+       comments alone don't count, causing a completely spurious
+       "IndentationError: expected an indented block after 'try' statement"
+       that has nothing to do with anything the student wrote. pass is a
+       true no-op, so it has zero effect on genuinely working code; it only
+       matters for the comments-only/empty case, where it's the difference
+       between a spurious crash and correctly showing "No output." This
+       affects every Code Editor file using this same wrapper structure —
+       tracked as a fleet-wide fix, not specific to this one file. */
     if (canRunSync) {
       jsInputFn = py.toPy(function (promptText) { return makeInlineInput(promptText); });
       wrapperHeader =
@@ -1022,7 +1036,8 @@ runBtn.addEventListener("click", function () {
         "            raise Exception('__INFINITE_LOOP__')\n" +
         "    return _j277_trace\n" +
         "sys.settrace(_j277_trace)\n" +
-        "try:\n";
+        "try:\n" +
+        "    pass\n";
     } else {
       jsInputFn = py.toPy(function (promptText) {
         var result = window.prompt(promptText || "");
@@ -1042,7 +1057,8 @@ runBtn.addEventListener("click", function () {
         "            raise Exception('__INFINITE_LOOP__')\n" +
         "    return _j277_trace\n" +
         "sys.settrace(_j277_trace)\n" +
-        "try:\n";
+        "try:\n" +
+        "    pass\n";
     }
     py.globals.set("_js_input", jsInputFn);
 
@@ -1109,6 +1125,24 @@ runBtn.addEventListener("click", function () {
           }
 
           if (/^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(t)) {
+            // SyntaxError/IndentationError messages sometimes embed their
+            // OWN line reference directly in the text itself — e.g.
+            // "...expected an indented block after 'if' statement on line
+            // N" — a completely different format from the "File "...",
+            // line N" pattern handled above (confirmed with a real Python
+            // test: this is a separate code path entirely, not something
+            // the logic above happens to also catch). Translate this
+            // embedded reference too, when it falls inside the student's
+            // own code range, so a genuine empty-block error a student
+            // introduces themselves (e.g. an empty if:/for:/while: body)
+            // points at their own line number instead of an internal one.
+            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+              var n = parseInt(numStr, 10);
+              if (n >= studentRangeStart && n <= studentRangeEnd) {
+                return "on line " + (n - WRAPPER_HEADER_LINES);
+              }
+              return whole;
+            });
             errorType = t; i++; continue;
           }
           i++;
