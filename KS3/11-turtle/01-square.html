@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Turtle — Fix the Square — J277 Code Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
+<style>
+/* ============================================================
+   THEME — dark is default, light toggled via body.j277-light
+   ============================================================ */
+:root{
+  --bg:#0d0f14; --surface:#151820; --surface2:#1c2030; --border:#2a2f42;
+  --accent:#4f8ef7; --success:#3ecf8e; --error:#f06353; --warn:#f0997b;
+  --text:#e8eaf0; --text-muted:#7a8099;
+  --hl-kw:#569cd6; --hl-bi:#dcdcaa; --hl-str:#ce9178; --hl-num:#b5cea8; --hl-cm:#6a9955;
+  /* Fixed regardless of theme (NOT redefined in body.j277-light below) —
+     used only for the widget's true OUTER silhouette (the sides that sit
+     directly against the host page). Genuinely transparent, not a colour
+     match, so it never creates a visible outline against ANY host page
+     background, whatever colour that page happens to be. Internal seams
+     between topbar/tabs/editor/footer keep using the theme's own --border
+     instead, since those are only ever seen against the widget's own
+     background, not the host page. */
+  --outer-border:transparent;
+}
+body.j277-light{
+  --bg:#ffffff; --surface:#ffffff; --surface2:#eef0f5; --border:#d7dbe4;
+  --accent:#2563eb; --success:#1a9c66; --error:#d1453b; --warn:#c5651f;
+  --text:#1b1f2a; --text-muted:#6b7280;
+  --hl-kw:#aa22ff; --hl-bi:var(--text); --hl-str:#a31515; --hl-num:#0000ff; --hl-cm:#008000;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+/* NOTE: deliberately no html/body rules here. This file is often pasted
+   directly into a host CMS's "embed code" block (confirmed with Weebly)
+   rather than loaded via <iframe>, which means html/body selectors here
+   would style the HOST PAGE's real <html>/<body>, not a sandboxed copy.
+   Every rule below is scoped to #widgetRoot or its descendants instead. */
+body{
+  /* Deliberately NOT var(--bg) here. That's the widget's own dark/light
+     theme color, meant for the topbar/editor/footer chrome — using it on
+     body too would paint the outer 14px .wrap padding with it, which reads
+     as a solid dark or grey "frame" around the widget once it's sitting on
+     a plain white host page. Fixed white matches the actual page it's
+     embedded on regardless of which theme the student has picked.
+     THIS EXACT LINE HAS BEEN ACCIDENTALLY REVERTED BY A LATER EDIT ONCE
+     ALREADY — if you're touching this file and see var(--bg) here again,
+     that's the bug recurring, not an intentional change. */
+  background:#ffffff; color:var(--text); font-family:'DM Sans',sans-serif;
+  transition:background .15s,color .15s;
+}
+.wrap{ max-width:900px; margin:0 auto; padding:14px; }
+
+/* ── Full screen mode ───────────────────────────────────── */
+/* No padding here (unlike .wrap's normal 14px) — a padded gap around the
+   chrome would show var(--bg), which is a visibly darker/lighter shade
+   than the topbar/editor/footer's own --surface/--surface2 colours,
+   reading as an unwanted "frame" ring around the widget. Going fully
+   edge-to-edge removes any gap for that shade mismatch to show through. */
+#widgetRoot:fullscreen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:-webkit-full-screen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot.j277-fs-fallback{
+  position:fixed; inset:0; z-index:9999; max-width:none; width:100vw; height:100vh;
+  margin:0; padding:0; display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:fullscreen .ce-body,
+#widgetRoot:-webkit-full-screen .ce-body,
+#widgetRoot.j277-fs-fallback .ce-body{ flex:1; min-height:0; }
+/* Square off the chrome's corners in fullscreen — rounded corners look
+   like a stray gap/inset right at the true screen edge. */
+#widgetRoot:fullscreen .topbar, #widgetRoot:-webkit-full-screen .topbar, #widgetRoot.j277-fs-fallback .topbar{ border-radius:0; }
+#widgetRoot:fullscreen .ce-footer, #widgetRoot:-webkit-full-screen .ce-footer, #widgetRoot.j277-fs-fallback .ce-footer{ border-radius:0; }
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.topbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface2); border:0.5px solid var(--border); border-radius:10px 10px 0 0;
+  padding:8px 10px;
+  /* Top/left/right are this widget's true outer edge — fixed colour so it
+     blends with the host page in both themes. Bottom stays theme-coloured
+     since it only ever borders file-tabs, part of the widget itself. */
+  border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.title{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; font-weight:700; color:var(--text);
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.title i{ color:var(--accent); font-size:15px; }
+.spacer{ flex:1; }
+.icon-btn{
+  display:inline-flex; align-items:center; gap:4px; border:0.5px solid var(--border);
+  border-radius:6px; padding:4px 9px; font-size:11px; color:var(--text-muted);
+  background:var(--surface); cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.icon-btn:hover{ color:var(--text); border-color:var(--accent); }
+.icon-btn i{ font-size:13px; }
+.run-btn{
+  background:rgba(79,142,247,0.12); border-color:var(--accent); color:var(--accent); font-weight:600;
+}
+.font-row{ display:flex; align-items:center; gap:2px; border:0.5px solid var(--border); border-radius:6px; padding:2px 6px; }
+.font-row span{ font-size:11px; color:var(--text-muted); min-width:26px; text-align:center; }
+.font-row button{ border:none; background:none; font-size:13px; color:var(--text-muted); cursor:pointer; padding:0 3px; }
+.font-row button:hover{ color:var(--text); }
+
+/* ── Body split ─────────────────────────────────────────── */
+.ce-body{
+  border:0.5px solid var(--border); border-top:none; background:var(--surface);
+  display:flex; min-height:280px;
+  /* Left/right are the widget's outer edge (see .topbar comment above) */
+  border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.pane{ display:flex; flex-direction:column; flex:1; min-width:0; }
+.v-handle{
+  width:6px; background:var(--border); cursor:col-resize; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; position:relative;
+  transition:background .15s;
+}
+.v-handle:hover, .v-handle.active{ background:rgba(79,142,247,0.35); }
+.v-handle-dots{ display:flex; flex-direction:column; gap:3px; pointer-events:none; }
+.v-handle-dots span{ width:2px; height:2px; border-radius:50%; background:var(--text-muted); opacity:.6; }
+.pane-lbl{
+  font-size:9px; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
+}
+
+/* ── File tabs (Python file + added text files) ──────────── */
+.file-tabs{
+  display:flex; align-items:stretch; background:var(--surface2); border:0.5px solid var(--border);
+  border-bottom:none; overflow-x:auto;
+}
+.file-tab{
+  display:flex; align-items:center; gap:5px; padding:6px 10px; font-size:10.5px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; cursor:pointer; border-bottom:2px solid transparent;
+  white-space:nowrap; color:var(--text-muted); user-select:none;
+}
+.file-tab.active{ background:var(--bg); border-bottom-color:var(--accent); color:var(--accent); font-weight:600; }
+.file-tab i{ font-size:12px; }
+.file-tab-close{
+  border:none; background:none; color:inherit; cursor:pointer; font-size:13px; line-height:1; padding:0 0 0 4px;
+}
+.file-tab-input{
+  background:none; border:none; outline:none; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:10.5px;
+  color:inherit; width:82px; font-weight:inherit;
+}
+.file-tab-open{
+  border:0.5px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer;
+  padding:3px 9px; font-size:12px; line-height:1; margin:4px 4px 4px auto; border-radius:5px; flex-shrink:0;
+  display:flex; align-items:center; gap:4px;
+}
+.file-tab-open:hover{ color:var(--accent); border-color:var(--accent); }
+.file-tab-open i{ font-size:13px; }
+.file-tab-add{
+  border:0.5px solid var(--border); background:var(--surface); color:var(--text-muted); cursor:pointer;
+  padding:3px 9px; font-size:13px; line-height:1; margin:4px 6px 4px 0; border-radius:5px; flex-shrink:0;
+}
+.file-tab-add:hover{ color:var(--accent); border-color:var(--accent); }
+
+/* ── Full-width text file editor (shown instead of ce-body when a text tab is active) ── */
+.txt-editor-wrap{
+  display:flex; flex-direction:column; border:0.5px solid var(--border); border-top:none;
+  background:var(--surface); min-height:280px;
+  border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.txt-editor-ta{
+  flex:1; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  color:var(--text); background:var(--bg); border:none; outline:none; resize:none; tab-size:4;
+}
+.editor-area{ flex:1; display:flex; min-height:0; overflow:hidden; }
+.line-nums{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 6px 8px 10px;
+  color:var(--text-muted); background:var(--surface); text-align:right; user-select:none;
+  overflow:hidden; white-space:pre; flex-shrink:0; border-right:0.5px solid var(--border);
+}
+.hl-wrap{ position:relative; flex:1; overflow:hidden; background:var(--bg); min-height:0; }
+.hl-overlay{
+  position:absolute; inset:0; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px;
+  pointer-events:none; white-space:pre; tab-size:4; overflow:hidden;
+  color:var(--text);
+}
+.hl-overlay .hl-kw{ color:var(--hl-kw); }
+.hl-overlay .hl-bi{ color:var(--hl-bi); }
+.hl-overlay .hl-str{ color:var(--hl-str); }
+.hl-overlay .hl-num{ color:var(--hl-num); }
+.hl-overlay .hl-cm{ color:var(--hl-cm); }
+.code-ta{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px; color:transparent;
+  background:transparent; caret-color:var(--text); border:none; outline:none; resize:none;
+  width:100%; height:100%; tab-size:4; position:relative; z-index:1;
+  overflow-y:auto; overflow-x:auto; white-space:pre; box-sizing:border-box;
+}
+.out-pane{ border-left:0.5px solid var(--border); }
+.output{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 10px;
+  background:var(--surface2); flex:1; overflow:auto; white-space:pre-wrap; color:var(--text);
+}
+.out-ok{ color:var(--success); }
+.out-err{ color:var(--error); }
+.out-warn-line{ color:var(--warn); font-style:italic; }
+.out-muted{ color:var(--text-muted); }
+
+/* ── Turtle canvas ──────────────────────────────────────── */
+.canvas-wrap{
+  position:relative; flex:1; background:var(--surface2); overflow:hidden; min-height:0;
+}
+#turtleCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+#markerCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+.canvas-placeholder{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:var(--text-muted); font-family:'DM Sans',sans-serif; pointer-events:none;
+}
+.canvas-warn-overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:16px;
+  background:rgba(13,15,20,0.55);
+}
+body.j277-light .canvas-warn-overlay{ background:rgba(255,255,255,0.75); }
+.canvas-warn-overlay .warn-panel{ max-width:90%; }
+.canvas-log{
+  position:absolute; left:0; right:0; bottom:0; padding:8px 10px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:11px; white-space:pre-wrap; line-height:1.6;
+  background:var(--surface2); border-top:0.5px solid var(--border); max-height:45%; overflow:auto;
+}
+
+/* ── Footer status bar ──────────────────────────────────── */
+.ce-footer{
+  padding:6px 10px; border:0.5px solid var(--border); border-top:none; border-radius:0 0 10px 10px;
+  display:flex; align-items:center; justify-content:space-between; background:var(--surface2);
+  /* Bottom/left/right are this widget's true outer edge (see .topbar comment) */
+  border-bottom-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.footer-left{ display:flex; align-items:center; gap:6px; }
+.dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
+.dot-err{ background:var(--error); }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+
+/* Infinite-loop / warning panel */
+.warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
+.warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
+.warn-btn{
+  display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
+  font-weight:600; border:0.5px solid var(--warn); background:rgba(240,153,123,0.15); color:var(--warn);
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.warn-btn-plain{
+  border:0.5px solid var(--border); background:var(--surface); color:var(--text-muted); font-weight:400;
+}
+.warn-explain{
+  margin-top:8px; padding:8px 10px; background:var(--surface); border-radius:6px; font-size:12px;
+  color:var(--text); line-height:1.7; border:0.5px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="widgetRoot">
+  <div class="topbar">
+    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">Turtle — Fix the Square</span></div>
+    <div class="spacer"></div>
+    <div class="font-row">
+      <button id="fontDown" title="Smaller text">A-</button>
+      <span id="fontSizeLbl">12px</span>
+      <button id="fontUp" title="Larger text">A+</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" title="Toggle light/dark mode">
+      <i class="ti ti-moon" aria-hidden="true" id="themeIcon"></i><span id="themeLbl">Dark</span>
+    </button>
+    <button class="icon-btn" id="resetBtn" title="Reset to starter code">
+      <i class="ti ti-refresh" aria-hidden="true"></i>Reset
+    </button>
+    <button class="icon-btn" id="downloadBtn" title="Download as .py file">
+      <i class="ti ti-download" aria-hidden="true"></i>Save .py
+    </button>
+    <button class="icon-btn" id="fsBtn" title="Full screen">
+      <i class="ti ti-maximize" aria-hidden="true" id="fsIcon"></i><span id="fsLbl">Full screen</span>
+    </button>
+    <button class="icon-btn run-btn" id="runBtn" title="Run (Ctrl/Cmd + Enter)">
+      <i class="ti ti-player-play" aria-hidden="true"></i>Run
+    </button>
+  </div>
+
+  <div class="file-tabs" id="fileTabs"></div>
+  <input type="file" id="openFileInput" accept=".py,.txt,.csv" style="display:none;" />
+
+  <div class="ce-body" id="ceBody">
+    <div class="pane" id="editorPane" style="flex:1.35;">
+      <div class="pane-lbl" id="editorPaneLbl">turtle_fix_square.py</div>
+      <div class="editor-area">
+        <div class="line-nums" id="lineNums">1</div>
+        <div class="hl-wrap">
+          <div class="hl-overlay" id="hlOverlay" aria-hidden="true"></div>
+          <textarea class="code-ta" id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="v-handle" id="vHandle" title="Drag to resize">
+      <div class="v-handle-dots"><span></span><span></span><span></span></div>
+    </div>
+    <div class="pane out-pane" id="outputPane" style="flex:1;">
+      <div class="pane-lbl">Turtle Canvas</div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="turtleCanvas"></canvas>
+        <canvas id="markerCanvas"></canvas>
+        <div class="canvas-placeholder" id="canvasPlaceholder">Click Run to see your drawing here.</div>
+        <div class="canvas-warn-overlay" id="canvasWarnOverlay" style="display:none;"></div>
+        <div class="canvas-log" id="canvasLog" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="txt-editor-wrap" id="txtEditorWrap" style="display:none;">
+    <div class="pane-lbl" id="txtEditorLbl"></div>
+    <textarea class="txt-editor-ta" id="txtEditorTa" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Type the content of this file here…"></textarea>
+  </div>
+
+  <div class="ce-footer">
+    <div class="footer-left">
+      <div class="dot" id="statusDot"></div>
+      <span class="footer-txt" id="statusTxt">Python 3.12 · Pyodide · ready</span>
+    </div>
+    <span class="hint">Ctrl/Cmd + Enter to run</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   PAGE ID — used to namespace this challenge's localStorage keys.
+   ------------------------------------------------------------
+   Derived automatically from the page's own URL, so every challenge
+   file gets its own storage slot with zero manual steps. This is
+   deliberate: relying on remembering to edit a hardcoded string
+   every time this file gets duplicated for the next challenge is
+   exactly the kind of thing that gets forgotten a few files in —
+   one challenge's saved code silently overwriting another's. Do not
+   replace this with a hardcoded "ch1"/"ch2"-style string.
+   ============================================================ */
+var PAGE_ID = (function () {
+  try {
+    var path = window.location.pathname || "default";
+    return path.replace(/[^a-zA-Z0-9_-]/g, "_") || "default";
+  } catch (e) { return "default"; }
+})();
+
+/* ============================================================
+   CHALLENGE IDENTITY — the two things to change when duplicating
+   this file for the next challenge. Everything else (page title,
+   topbar heading, editor pane label, file tab label, download
+   filename) derives from these automatically — don't hunt through
+   the rest of the file for "Challenge 1" / "array_challenge_1"
+   by hand, it's no longer hardcoded anywhere else.
+   ============================================================ */
+var CHALLENGE_TITLE = "Turtle — Fix the Square";        // shown in the tab title + topbar heading
+var CHALLENGE_FILENAME = "turtle_fix_square";     // used for the .py filename everywhere (no extension)
+
+document.title = CHALLENGE_TITLE + " — J277 Code Editor";
+document.getElementById("challengeTitleEl").textContent = CHALLENGE_TITLE;
+document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py";
+
+/* FIX: line-number gutter misalignment on wrapped long lines (fix #5 in
+   fixes-audit.md). This file was originally built from Comments Challenge
+   1, specifically to inherit that file's pass-statement and line-
+   translation fixes — but Comments Challenge 1 itself never had this
+   particular gutter fix applied, so this file silently inherited that
+   gap along with the fixes it was built to pick up. Found from Andy's
+   own screenshots showing gutter numbers drifting out of alignment with
+   their visual rows as long comment lines wrapped. Fixed the same way as
+   Comments Challenge 2 originally was: .hl-overlay switched from
+   white-space:pre-wrap/word-wrap:break-word to plain white-space:pre,
+   .code-ta switched from overflow-x:hidden to overflow-x:auto with
+   white-space:pre, and wrap="off" added to the textarea itself — this
+   stops the textarea/overlay from visually wrapping at all, so the
+   gutter's one-number-per-logical-line counting stays correctly aligned,
+   with horizontal scroll available for genuinely long lines instead. */
+
+/* ============================================================
+   STARTER CODE
+   ------------------------------------------------------------
+   Turtle — Fix the Square — content supplied directly in chat. A
+   genuine "spot the bug(s)" exercise, not a working demo — verified
+   precisely with real Python that the code as given does NOT close
+   into a proper square: final position ends at roughly (-84.2,
+   -6.03), well away from the origin. Two distinct bugs, both
+   verified individually: forward(150) should match the other three
+   sides' length of 100, AND right(70) should match the other two
+   turns' angle of 90 — confirmed both together (not just one) are
+   needed to close it, since a real Python run with all four sides
+   at 100 and all three turns at 90 correctly returns to (0,0).
+   ============================================================ */
+var STARTER_CODE =
+"#GCSECS.COM\n" +
+"#How do i fix this code?\n" +
+"#Can you make it draw a square?\n" +
+"import turtle\n" +
+"turtle.forward(100)\n" +
+"turtle.right(90)\n" +
+"turtle.forward(100)\n" +
+"turtle.right(90)\n" +
+"turtle.forward(150)\n" +
+"turtle.right(70)\n" +
+"turtle.forward(100)\n";
+
+/* ============================================================
+   FILE TABS — the main Python file + any added text files.
+   Text files get written to Pyodide's virtual filesystem before
+   each run, so student code can do e.g. open("data.txt").
+   ============================================================ */
+var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
+var tabs = [{ id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" }];
+var activeTabId = "main";
+var tabIdCounter = 0;
+
+(function restoreTabs() {
+  try {
+    var saved = JSON.parse(localStorage.getItem(TABS_STORAGE_KEY) || "null");
+    if (saved && saved.tabs && saved.tabs.length) {
+      tabs = saved.tabs;
+      activeTabId = saved.activeTabId || "main";
+      tabIdCounter = saved.tabIdCounter || 0;
+    }
+  } catch (e) {}
+})();
+
+function saveTabsState() {
+  try { localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify({ tabs: tabs, activeTabId: activeTabId, tabIdCounter: tabIdCounter })); } catch (e) {}
+}
+function getActiveTab() { return tabs.find(function (t) { return t.id === activeTabId; }) || tabs[0]; }
+
+var fileTabsEl = document.getElementById("fileTabs");
+var txtEditorWrap = document.getElementById("txtEditorWrap");
+var txtEditorLbl = document.getElementById("txtEditorLbl");
+var txtEditorTa = document.getElementById("txtEditorTa");
+
+function renderFileTabs() {
+  fileTabsEl.innerHTML = "";
+  tabs.forEach(function (tab) {
+    var el = document.createElement("div");
+    el.className = "file-tab" + (tab.id === activeTabId ? " active" : "");
+
+    if (tab.type === "code") {
+      el.innerHTML = '<i class="ti ti-brand-python" aria-hidden="true"></i><span>' + tab.label + "</span>";
+      el.addEventListener("click", function () { switchTab(tab.id); });
+    } else {
+      var icon = document.createElement("i");
+      icon.className = "ti ti-file-text"; icon.setAttribute("aria-hidden", "true");
+      icon.style.color = "var(--success)";
+      el.appendChild(icon);
+
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "file-tab-input";
+      input.value = tab.label;
+      input.title = "Click to rename";
+      input.addEventListener("click", function (e) { if (tab.id !== activeTabId) return; e.stopPropagation(); });
+      input.addEventListener("focus", function () { switchTab(tab.id); });
+      input.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") input.blur(); });
+      input.addEventListener("blur", function () {
+        var name = input.value.trim() || "untitled.txt";
+        if (!/\.(txt|csv)$/i.test(name)) name += ".txt";
+        tab.label = name; input.value = name;
+        saveTabsState();
+      });
+      el.appendChild(input);
+
+      var closeBtn = document.createElement("button");
+      closeBtn.className = "file-tab-close";
+      closeBtn.textContent = "\u00d7";
+      closeBtn.title = "Remove this file";
+      closeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        tabs = tabs.filter(function (t) { return t.id !== tab.id; });
+        if (activeTabId === tab.id) activeTabId = "main";
+        saveTabsState();
+        renderFileTabs();
+        showActiveTabView();
+      });
+      el.appendChild(closeBtn);
+
+      el.addEventListener("click", function () { switchTab(tab.id); });
+    }
+    fileTabsEl.appendChild(el);
+  });
+
+  var addBtn = document.createElement("button");
+  addBtn.className = "file-tab-add";
+  addBtn.title = "Add a text file — readable in your code via open(\"filename\")";
+  addBtn.textContent = "+";
+  addBtn.addEventListener("click", function () {
+    // Reset the untitled counter back to 0 whenever no text-file tabs are
+    // currently open, so re-adding one after closing the last starts
+    // fresh at "untitled1" instead of continuing to climb forever.
+    var hasTxtTabs = tabs.some(function (t) { return t.type === "txt"; });
+    if (!hasTxtTabs) tabIdCounter = 0;
+
+    tabIdCounter++;
+    var newId = "txt_" + tabIdCounter;
+    tabs.push({ id: newId, type: "txt", label: "untitled" + tabIdCounter + ".txt", content: "" });
+    activeTabId = newId;
+    saveTabsState();
+    renderFileTabs();
+    showActiveTabView();
+  });
+
+  var openBtn = document.createElement("button");
+  openBtn.className = "file-tab-open";
+  openBtn.title = "Open a file from your device";
+  openBtn.innerHTML = '<i class="ti ti-folder-open" aria-hidden="true"></i>Open';
+  openBtn.addEventListener("click", function () { openFileInput.click(); });
+
+  fileTabsEl.appendChild(openBtn);
+  fileTabsEl.appendChild(addBtn);
+}
+
+function switchTab(id) {
+  if (id === activeTabId) return;
+  activeTabId = id;
+  saveTabsState();
+  renderFileTabs();
+  showActiveTabView();
+}
+
+function showActiveTabView() {
+  var tab = getActiveTab();
+  if (tab.type === "code") {
+    document.getElementById("ceBody").style.display = "flex";
+    txtEditorWrap.style.display = "none";
+  } else {
+    document.getElementById("ceBody").style.display = "none";
+    txtEditorWrap.style.display = "flex";
+    txtEditorLbl.innerHTML = '<i class="ti ti-file-text" aria-hidden="true" style="color:var(--success);margin-right:4px;"></i>' + tab.label + ' <span style="color:var(--success);margin-left:6px;">text file · readable via open("' + tab.label + '")</span>';
+    txtEditorTa.value = tab.content || "";
+    txtEditorTa.focus();
+  }
+}
+
+txtEditorTa.addEventListener("input", function () {
+  var tab = getActiveTab();
+  if (tab && tab.type === "txt") { tab.content = txtEditorTa.value; saveTabsState(); }
+});
+
+renderFileTabs();
+showActiveTabView();
+
+/* ============================================================
+   PYODIDE LOADING
+   ============================================================ */
+var pyodideReady = false, pyodideLoading = false, pyodideInstance = null;
+// Tracks which text-file tabs have been written into Pyodide's virtual FS,
+// so we can remove ones that were renamed/replaced/deleted before the next run.
+var fsWrittenFiles = {};
+
+function loadPyodideIfNeeded() {
+  return new Promise(function (resolve, reject) {
+    if (pyodideReady) { resolve(pyodideInstance); return; }
+    if (pyodideLoading) {
+      var iv = setInterval(function () {
+        if (pyodideReady) { clearInterval(iv); resolve(pyodideInstance); }
+      }, 200);
+      return;
+    }
+    pyodideLoading = true;
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+    script.onload = function () {
+      loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" }).then(function (py) {
+        pyodideInstance = py; pyodideReady = true; pyodideLoading = false; resolve(py);
+      }).catch(reject);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   PRE-RUN INFINITE LOOP SCANNER (static check, no execution)
+   ============================================================ */
+function detectInfiniteLoop(code) {
+  // Strip triple-quoted string blocks BEFORE scanning — this is a simple
+  // text-pattern scanner, not a real Python parser, so without this it
+  // can't tell the difference between an ACTUAL while-loop and one that's
+  // just sitting inertly inside a '''...'''/\"\"\"...\"\"\" string (e.g. an
+  // intentionally-incomplete code stub shown for a student to later
+  // uncomment). Confirmed this exact false positive with real testing:
+  // a triple-quoted block containing "while x < N:" with no visible
+  // modification of x was incorrectly flagged as an infinite loop, even
+  // though the string is never executed as code at all. Each stripped
+  // block is replaced with the same number of newlines it contained, so
+  // nothing downstream that counts lines gets thrown off by this.
+  code = code.replace(/'''[\s\S]*?'''|"""[\s\S]*?"""/g, function (match) {
+    var newlineCount = (match.match(/\n/g) || []).length;
+    return new Array(newlineCount + 1).join("\n");
+  });
+  var lines = code.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i], trimmed = line.trim();
+    if (/^while\s+(True|1)\s*:/.test(trimmed)) {
+      return "while True: always runs forever — it has no condition that can become False.";
+    }
+    var m = trimmed.match(/^while\s+(\w+)\s*([!=<>]=?|==)\s*(.+?)\s*:/);
+    if (m) {
+      var condVar = m[1];
+      var indent = line.match(/^(\s*)/)[1].length;
+      var body = [];
+      for (var j = i + 1; j < lines.length; j++) {
+        var bl = lines[j];
+        if (bl.trim() === "") continue;
+        var bi = bl.match(/^(\s*)/)[1].length;
+        if (bi <= indent) break;
+        body.push(bl);
+      }
+      if (body.length === 0) continue;
+      var assignRe = new RegExp("\\b" + condVar + "\\s*[+\\-*/%&|^]?=(?!=)");
+      var inputRe = new RegExp("\\b" + condVar + "\\s*=.*input\\s*\\(");
+      var modified = body.some(function (bl) { return assignRe.test(bl) || inputRe.test(bl); });
+      if (!modified) {
+        return "The variable \"" + condVar + "\" in the while condition is never changed inside the loop — so the condition never becomes False.";
+      }
+    }
+  }
+  return null;
+}
+
+/* ============================================================
+   SYNTAX HIGHLIGHTING (Python)
+   ============================================================ */
+function escHtml(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function highlightPython(code) {
+  var KEYWORDS = /\b(False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b/g;
+  var BUILTINS = /\b(abs|all|any|bin|bool|bytes|callable|chr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip)\b/g;
+  var result = "";
+  code.split("\n").forEach(function (line, idx) {
+    if (idx > 0) result += "\n";
+    var cmIdx = -1, inStr = false, strChar = "";
+    for (var ci = 0; ci < line.length; ci++) {
+      var ch = line[ci];
+      if (!inStr && (ch === '"' || ch === "'")) {
+        if (line.slice(ci, ci + 3) === '"""' || line.slice(ci, ci + 3) === "'''") { inStr = true; strChar = line.slice(ci, ci + 3); ci += 2; }
+        else { inStr = true; strChar = ch; }
+      } else if (inStr) {
+        if (line.slice(ci, ci + strChar.length) === strChar) { inStr = false; ci += strChar.length - 1; }
+      } else if (ch === "#") { cmIdx = ci; break; }
+    }
+    var codePart = cmIdx >= 0 ? line.slice(0, cmIdx) : line;
+    var cmPart = cmIdx >= 0 ? line.slice(cmIdx) : "";
+    var tokens = "", remaining = codePart;
+    var strRe = /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/;
+    var numRe = /\b(\d+\.?\d*)\b/;
+    while (remaining.length) {
+      var strM = remaining.match(strRe), numM = remaining.match(numRe), pick = null;
+      if (strM && (!numM || strM.index <= numM.index)) pick = { idx: strM.index, len: strM[0].length, cls: "hl-str", val: strM[0] };
+      else if (numM) pick = { idx: numM.index, len: numM[0].length, cls: "hl-num", val: numM[0] };
+      if (!pick) { tokens += escHtml(remaining).replace(KEYWORDS, '<span class="hl-kw">$1</span>').replace(BUILTINS, '<span class="hl-bi">$1</span>'); break; }
+      tokens += escHtml(remaining.slice(0, pick.idx)).replace(KEYWORDS, '<span class="hl-kw">$1</span>').replace(BUILTINS, '<span class="hl-bi">$1</span>');
+      tokens += '<span class="' + pick.cls + '">' + escHtml(pick.val) + "</span>";
+      remaining = remaining.slice(pick.idx + pick.len);
+    }
+    result += tokens + (cmPart ? '<span class="hl-cm">' + escHtml(cmPart) + "</span>" : "");
+  });
+  return result;
+}
+
+/* ============================================================
+   WIRE UP THE DOM
+   ============================================================ */
+var codeTa = document.getElementById("codeTa");
+var hlOverlay = document.getElementById("hlOverlay");
+var lineNums = document.getElementById("lineNums");
+var canvasWrap = document.getElementById("canvasWrap");
+var turtleCanvas = document.getElementById("turtleCanvas");
+var markerCanvasEl = document.getElementById("markerCanvas");
+var canvasPlaceholder = document.getElementById("canvasPlaceholder");
+var canvasWarnOverlay = document.getElementById("canvasWarnOverlay");
+var canvasLog = document.getElementById("canvasLog");
+var statusDot = document.getElementById("statusDot");
+var statusTxt = document.getElementById("statusTxt");
+var runBtn = document.getElementById("runBtn");
+var resetBtn = document.getElementById("resetBtn");
+var downloadBtn = document.getElementById("downloadBtn");
+var themeToggle = document.getElementById("themeToggle");
+var themeIcon = document.getElementById("themeIcon");
+var themeLbl = document.getElementById("themeLbl");
+var fontUp = document.getElementById("fontUp");
+var fontDown = document.getElementById("fontDown");
+var fontSizeLbl = document.getElementById("fontSizeLbl");
+
+var STORAGE_KEY = "j277_code_" + PAGE_ID;
+var THEME_KEY = "j277_embed_theme"; // intentionally shared across all challenges — one theme preference site-wide
+var currentFontSize = 12;
+
+function saveCode() { try { localStorage.setItem(STORAGE_KEY, codeTa.value); } catch (e) {} }
+function loadSavedCode() { try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; } }
+
+codeTa.value = loadSavedCode() || STARTER_CODE;
+
+function updateLineNums() {
+  var n = codeTa.value.split("\n").length;
+  var html = "";
+  for (var i = 1; i <= n; i++) html += i + "\n";
+  lineNums.textContent = html;
+  lineNums.scrollTop = codeTa.scrollTop;
+}
+function updateHighlight() {
+  hlOverlay.innerHTML = highlightPython(codeTa.value) + "\n";
+  hlOverlay.scrollTop = codeTa.scrollTop;
+  hlOverlay.scrollLeft = codeTa.scrollLeft;
+}
+function applyFontSize() {
+  fontSizeLbl.textContent = currentFontSize + "px";
+  [codeTa, hlOverlay, lineNums, canvasLog].forEach(function (el) { el.style.fontSize = currentFontSize + "px"; });
+}
+
+/* ============================================================
+   TURTLE CANVAS SETUP
+   ------------------------------------------------------------
+   Turtle's own coordinate convention is (0,0) at the CENTRE of the
+   canvas, y increasing UPWARD — the opposite of a browser canvas's
+   native (0,0)-at-top-left, y-increasing-DOWNWARD convention. Every
+   drawing call below converts turtle coordinates to canvas pixel
+   coordinates via canvasX = centreX + turtleX, canvasY = centreY -
+   turtleY (the "- turtleY" is what flips the y-axis direction),
+   rather than asking the Python-side shim to know anything about
+   the canvas's actual pixel dimensions.
+   ============================================================ */
+var turtleCtx = turtleCanvas.getContext("2d");
+var markerCtx = markerCanvasEl.getContext("2d");
+var turtleCenterX = 0, turtleCenterY = 0;
+
+function resizeTurtleCanvas() {
+  // Match the canvas's internal pixel buffer to its actual displayed
+  // CSS size, accounting for devicePixelRatio — without this, drawings
+  // on a high-DPI screen come out blurry/soft-edged (the canvas buffer
+  // would be lower-resolution than the screen actually renders it at).
+  // Both canvases (drawing + marker overlay) are kept in sync here —
+  // they must always share identical dimensions/transform, or the
+  // marker would drift out of alignment with the actual drawing.
+  var rect = canvasWrap.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  turtleCanvas.width = Math.max(1, Math.round(rect.width * dpr));
+  turtleCanvas.height = Math.max(1, Math.round(rect.height * dpr));
+  turtleCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  markerCanvasEl.width = turtleCanvas.width;
+  markerCanvasEl.height = turtleCanvas.height;
+  markerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  turtleCenterX = rect.width / 2;
+  turtleCenterY = rect.height / 2;
+}
+
+function clearTurtleCanvas() {
+  resizeTurtleCanvas();
+  var rect = canvasWrap.getBoundingClientRect();
+  turtleCtx.clearRect(0, 0, rect.width, rect.height);
+}
+
+function resetCanvasView() {
+  clearTurtleCanvas();
+  canvasPlaceholder.textContent = "Click Run to see your drawing here.";
+  canvasPlaceholder.style.display = "flex";
+  canvasWarnOverlay.style.display = "none";
+  canvasWarnOverlay.innerHTML = "";
+  canvasLog.style.display = "none";
+  canvasLog.innerHTML = "";
+  // visible:false here (not true) is deliberate — this clears the marker
+  // overlay layer without drawing anything on it, since nothing has run
+  // yet. Confirmed this was a genuine bug during testing: with visible
+  // set to true, this drew a stray marker at the canvas centre behind
+  // the placeholder text on every reset, even though nothing had run.
+  lastMarker = { x: 0, y: 0, heading: 0, visible: false };
+  drawMarker();
+}
+
+function appendCanvasLogLine(text, cls) {
+  canvasLog.style.display = "block";
+  var d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = text;
+  canvasLog.appendChild(d);
+  canvasLog.scrollTop = canvasLog.scrollHeight;
+}
+
+/* The _turtleDrawAPI object is what the injected turtle.py shim calls into
+   via Pyodide's "import js" bridge (see TURTLE_SHIM_SRC further below).
+   Deliberately a plain global object, not scoped inside the run handler —
+   the shim's own module-level code runs once at "import turtle" time and
+   needs this to already exist at that point. */
+window._turtleDrawAPI = {
+  moveTo: function (x, y) { turtleCtx.moveTo(turtleCenterX + x, turtleCenterY - y); },
+  lineTo: function (x, y) { turtleCtx.lineTo(turtleCenterX + x, turtleCenterY - y); },
+  beginPath: function () { turtleCtx.beginPath(); },
+  stroke: function () { turtleCtx.stroke(); window.__turtleHasDrawn = true; },
+  setStrokeStyle: function (c) { turtleCtx.strokeStyle = c; },
+  setFillStyle: function (c) { turtleCtx.fillStyle = c; },
+  setLineWidth: function (w) { turtleCtx.lineWidth = w; },
+  beginFillPath: function (x, y) { turtleCtx.beginPath(); turtleCtx.moveTo(turtleCenterX + x, turtleCenterY - y); },
+  fillLineTo: function (x, y) { turtleCtx.lineTo(turtleCenterX + x, turtleCenterY - y); },
+  fill: function () { turtleCtx.fill(); window.__turtleHasDrawn = true; },
+  clearAll: function () { clearTurtleCanvas(); },
+  setBackground: function (c) { canvasWrap.style.background = c; window.__turtleHasDrawn = true; },
+  /* ============================================================
+     animateSegment — the core of the "watch the turtle move"
+     feature. Draws ONE movement (a straight line from x0,y0 to
+     x1,y1) incrementally over durationMs, rather than instantly.
+     Each animation frame: clear the marker overlay layer, redraw
+     the IN-PROGRESS portion of this segment on it (if the pen is
+     down) plus the marker triangle at its current partway
+     position — both temporary, both erased and redrawn every
+     frame. Once the animation reaches its end, the FINAL, complete
+     segment gets committed permanently to the real drawing canvas,
+     and the overlay is left showing only the marker at its final
+     position. durationMs <= 0 means no animation at all (used for
+     speed(0), matching real turtle's own convention, and as the
+     fallback for browsers without JSPI support, where Python can't
+     await a JS animation loop at all).
+     ============================================================ */
+  animateSegment: function (x0, y0, x1, y1, headingDeg, durationMs, penDown) {
+    var strokeStyle = turtleCtx.strokeStyle, lineWidth = turtleCtx.lineWidth;
+    function commitFinal() {
+      if (penDown) {
+        turtleCtx.beginPath();
+        turtleCtx.moveTo(turtleCenterX + x0, turtleCenterY - y0);
+        turtleCtx.lineTo(turtleCenterX + x1, turtleCenterY - y1);
+        turtleCtx.stroke();
+        window.__turtleHasDrawn = true;
+      }
+      lastMarker = { x: x1, y: y1, heading: headingDeg, visible: true };
+      drawMarker();
+    }
+    return new Promise(function (resolve) {
+      if (durationMs <= 0) { commitFinal(); resolve(); return; }
+      var startTime = null;
+      function step(timestamp) {
+        if (startTime === null) startTime = timestamp;
+        var t = Math.min(1, (timestamp - startTime) / durationMs);
+        var curX = x0 + (x1 - x0) * t, curY = y0 + (y1 - y0) * t;
+        var rect = canvasWrap.getBoundingClientRect();
+        markerCtx.clearRect(0, 0, rect.width, rect.height);
+        if (penDown) {
+          markerCtx.save();
+          markerCtx.strokeStyle = strokeStyle;
+          markerCtx.lineWidth = lineWidth;
+          markerCtx.beginPath();
+          markerCtx.moveTo(turtleCenterX + x0, turtleCenterY - y0);
+          markerCtx.lineTo(turtleCenterX + curX, turtleCenterY - curY);
+          markerCtx.stroke();
+          markerCtx.restore();
+        }
+        drawMarkerTriangle(curX, curY, headingDeg);
+        if (t < 1) { requestAnimationFrame(step); }
+        else { commitFinal(); resolve(); }
+      }
+      requestAnimationFrame(step);
+    });
+  },
+  // The direction marker is a small filled triangle, redrawn fresh each
+  // time rather than actually moved — simplest way to keep it visually in
+  // sync with the turtle's real position without tracking a separate
+  // "erase the old marker" step (each new drawing call already clears and
+  // redraws the whole canvas's marker layer via updateMarker below).
+  updateMarker: function (x, y, headingDeg, visible) {
+    lastMarker = { x: x, y: y, heading: headingDeg, visible: visible };
+    drawMarker();
+  }
+};
+
+var lastMarker = { x: 0, y: 0, heading: 0, visible: true };
+function drawMarkerTriangle(x, y, headingDeg) {
+  markerCtx.save();
+  markerCtx.translate(turtleCenterX + x, turtleCenterY - y);
+  markerCtx.rotate(-headingDeg * Math.PI / 180);
+  markerCtx.fillStyle = "#3ecf8e";
+  markerCtx.strokeStyle = "#1b1f2a";
+  markerCtx.lineWidth = 1;
+  markerCtx.beginPath();
+  markerCtx.moveTo(9, 0);
+  markerCtx.lineTo(-6, 6);
+  markerCtx.lineTo(-6, -6);
+  markerCtx.closePath();
+  markerCtx.fill();
+  markerCtx.stroke();
+  markerCtx.restore();
+}
+
+function drawMarker() {
+  // The marker is drawn on a SEPARATE, transparent overlay canvas layered
+  // on top of the drawing canvas, rather than directly on the drawing
+  // canvas itself — this is deliberate: redrawing the marker on every
+  // single move (which happens constantly, once per forward/turn call)
+  // would otherwise require clearing and fully replaying the entire
+  // drawing history each time just to erase the PREVIOUS marker position,
+  // since a plain canvas has no way to erase one shape without affecting
+  // anything drawn under it. A second, cheap-to-clear overlay avoids that
+  // entirely — only the marker layer gets cleared+redrawn per move, the
+  // actual line drawing underneath is untouched.
+  if (!markerCtx) return;
+  var rect = canvasWrap.getBoundingClientRect();
+  markerCtx.clearRect(0, 0, rect.width, rect.height);
+  if (!lastMarker.visible) return;
+  drawMarkerTriangle(lastMarker.x, lastMarker.y, lastMarker.heading);
+}
+
+codeTa.addEventListener("input", function () { updateLineNums(); updateHighlight(); saveCode(); });
+codeTa.addEventListener("scroll", function () {
+  lineNums.scrollTop = codeTa.scrollTop;
+  hlOverlay.scrollTop = codeTa.scrollTop;
+  hlOverlay.scrollLeft = codeTa.scrollLeft;
+});
+
+/* ── Editor keyboard behaviour: Tab / auto-indent / dedent / run ── */
+codeTa.addEventListener("keydown", function (e) {
+  var start = codeTa.selectionStart, val = codeTa.value;
+
+  // Ctrl/Cmd + Enter → run
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    runBtn.click();
+    return;
+  }
+
+  // NOTE: every edit below uses document.execCommand("insertText"/"delete", ...)
+  // instead of directly overwriting codeTa.value. A raw .value assignment wipes
+  // out the browser's native undo history, which silently breaks Ctrl/Cmd+Z for
+  // students. execCommand is deprecated for most uses but is still the standard,
+  // universally-supported way to edit a textarea while keeping undo intact — do
+  // not "simplify" this back to direct .value assignment.
+
+  if (e.key === "Tab") {
+    e.preventDefault();
+    document.execCommand("insertText", false, "    ");
+    updateLineNums(); updateHighlight(); saveCode();
+    return;
+  }
+
+  if (e.key === "Enter") {
+    e.preventDefault();
+    var lineStart = val.lastIndexOf("\n", start - 1) + 1;
+    var currentLine = val.slice(lineStart, start);
+    var indent = currentLine.match(/^(\s*)/)[1];
+    if (currentLine.trimRight().endsWith(":")) indent += "    ";
+    document.execCommand("insertText", false, "\n" + indent);
+    updateLineNums(); updateHighlight(); saveCode();
+    return;
+  }
+
+  if (e.key === "Backspace") {
+    var lineStart2 = val.lastIndexOf("\n", start - 1) + 1;
+    var beforeCursor = val.slice(lineStart2, start);
+    if (beforeCursor.match(/^( {4})+$/) && beforeCursor.length >= 4) {
+      e.preventDefault();
+      codeTa.selectionStart = start - 4;
+      codeTa.selectionEnd = start;
+      document.execCommand("delete");
+      updateLineNums(); updateHighlight(); saveCode();
+      return;
+    }
+  }
+
+  // Auto-close brackets / quotes (python.org / IDLE-style convenience)
+  var PAIRS = { "(": ")", "[": "]", "{": "}", '"': '"', "'": "'" };
+  if (PAIRS[e.key] && codeTa.selectionStart === codeTa.selectionEnd) {
+    e.preventDefault();
+    document.execCommand("insertText", false, e.key + PAIRS[e.key]);
+    codeTa.selectionStart = codeTa.selectionEnd = start + 1; // land cursor between the pair
+    updateLineNums(); updateHighlight(); saveCode();
+    return;
+  }
+  // Typing a closing char that's already next in the string just skips over it
+  // (pure cursor move, no value change — never touched undo history anyway)
+  var CLOSERS = [")", "]", "}", '"', "'"];
+  if (CLOSERS.indexOf(e.key) !== -1 && val[start] === e.key && codeTa.selectionStart === codeTa.selectionEnd) {
+    e.preventDefault();
+    codeTa.selectionStart = codeTa.selectionEnd = start + 1;
+  }
+});
+
+/* ── Reset / Download ─────────────────────────────────────── */
+resetBtn.addEventListener("click", function () {
+  if (codeTa.value.trim() !== STARTER_CODE.trim() && !confirm("Reset to the starter code? Your current changes will be lost.")) return;
+  codeTa.focus();
+  codeTa.selectionStart = 0;
+  codeTa.selectionEnd = codeTa.value.length;
+  document.execCommand("insertText", false, STARTER_CODE); // keeps this undoable, unlike a raw .value assignment
+  updateLineNums(); updateHighlight(); saveCode();
+  resetCanvasView();
+  statusDot.classList.remove("dot-err");
+  statusTxt.textContent = "Python 3.12 · Pyodide · ready";
+});
+
+downloadBtn.addEventListener("click", function () {
+  var blob = new Blob([codeTa.value], { type: "text/x-python" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = CHALLENGE_FILENAME + ".py";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+/* ── Font size controls ───────────────────────────────────── */
+fontUp.addEventListener("click", function () { currentFontSize = Math.min(20, currentFontSize + 1); applyFontSize(); });
+fontDown.addEventListener("click", function () { currentFontSize = Math.max(9, currentFontSize - 1); applyFontSize(); });
+
+/* ── Light / dark mode toggle ─────────────────────────────── */
+function applyTheme(light) {
+  document.body.classList.toggle("j277-light", light);
+  themeIcon.className = light ? "ti ti-sun" : "ti ti-moon";
+  themeLbl.textContent = light ? "Light" : "Dark";
+  updateHighlight(); // re-render so token colours pick up new CSS vars
+  try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (e) {}
+}
+themeToggle.addEventListener("click", function () {
+  applyTheme(!document.body.classList.contains("j277-light"));
+});
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+  if (saved === "light") applyTheme(true);
+  else if (saved === "dark") applyTheme(false);
+  else applyTheme(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+})();
+
+var openFileInput = document.getElementById("openFileInput");
+openFileInput.addEventListener("change", function () {
+  var file = openFileInput.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var text = e.target.result;
+    var ext = (file.name.split(".").pop() || "").toLowerCase();
+
+    if (ext === "py") {
+      // Switch to the Python tab first — a display:none textarea can't take
+      // focus, and this also keeps the "open" behaving predictably if the
+      // student was looking at a text-file tab when they picked a .py file.
+      var mainTab = tabs.find(function (t) { return t.type === "code"; });
+      activeTabId = mainTab.id;
+      renderFileTabs();
+      showActiveTabView();
+      codeTa.focus();
+      codeTa.selectionStart = 0;
+      codeTa.selectionEnd = codeTa.value.length;
+      document.execCommand("insertText", false, text); // keeps this undoable, unlike a raw .value assignment
+      updateLineNums(); updateHighlight(); saveCode();
+      saveTabsState();
+    } else {
+      // Load as a new text file tab
+      tabIdCounter++;
+      var newId = "txt_" + tabIdCounter;
+      tabs.push({ id: newId, type: "txt", label: file.name, content: text });
+      activeTabId = newId;
+      saveTabsState();
+      renderFileTabs();
+      showActiveTabView();
+    }
+    openFileInput.value = "";
+  };
+  reader.readAsText(file);
+});
+
+/* ============================================================
+   RUN
+   ============================================================ */
+runBtn.addEventListener("click", function () {
+  // If the student is looking at a text-file tab, switch back to the Python
+  // tab first — otherwise Run silently updates output behind a hidden pane.
+  var mainTab = tabs.find(function (t) { return t.type === "code"; });
+  if (activeTabId !== mainTab.id) switchTab(mainTab.id);
+
+  var code = codeTa.value;
+
+  var loopWarning = detectInfiniteLoop(code);
+  if (loopWarning) {
+    canvasPlaceholder.style.display = "none";
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "infinite loop detected";
+
+    var panel = document.createElement("div");
+    panel.className = "warn-panel";
+    panel.innerHTML =
+      '<div class="warn-head">\u26A0\uFE0F This loop might run forever</div>' +
+      '<div class="warn-detail"></div>';
+    panel.querySelector(".warn-detail").textContent = loopWarning;
+
+    var btns = document.createElement("div");
+    btns.className = "warn-btns";
+
+    var explainBtn = document.createElement("button");
+    explainBtn.className = "warn-btn";
+    explainBtn.innerHTML = "\uD83D\uDCA1 What is an infinite loop?";
+    explainBtn.addEventListener("click", function () {
+      var existing = panel.querySelector(".warn-explain");
+      if (existing) { existing.remove(); return; }
+      var el = document.createElement("div");
+      el.className = "warn-explain";
+      el.innerHTML =
+        "<strong>An infinite loop</strong> never stops because its condition is always <code>True</code>.<br><br>" +
+        "A <code>while</code> loop needs something inside it that eventually makes the condition <code>False</code>:<br><br>" +
+        "<code style='display:block;background:var(--bg);padding:6px 8px;border-radius:4px;font-size:11px;margin:4px 0;'>count = 0<br>while count &lt; 5:<br>&nbsp;&nbsp;&nbsp;&nbsp;print(count)<br>&nbsp;&nbsp;&nbsp;&nbsp;count = count + 1  \u2190 this makes it stop</code>";
+      panel.insertBefore(el, btns);
+    });
+    btns.appendChild(explainBtn);
+
+    var editBtn = document.createElement("button");
+    editBtn.className = "warn-btn warn-btn-plain";
+    editBtn.textContent = "\u270F Edit my code";
+    editBtn.addEventListener("click", function () {
+      canvasWarnOverlay.style.display = "none";
+      canvasWarnOverlay.innerHTML = "";
+      canvasPlaceholder.style.display = "flex";
+      statusDot.classList.remove("dot-err");
+      statusTxt.textContent = "Python 3.12 · Pyodide · ready";
+      codeTa.focus();
+    });
+    btns.appendChild(editBtn);
+
+    panel.appendChild(btns);
+    canvasWarnOverlay.innerHTML = "";
+    canvasWarnOverlay.appendChild(panel);
+    canvasWarnOverlay.style.display = "flex";
+    return;
+  }
+
+  resetCanvasView();
+  canvasPlaceholder.style.display = "none";
+  statusDot.classList.remove("dot-err");
+  statusTxt.textContent = pyodideReady ? "running\u2026" : "loading Python runtime\u2026";
+  runBtn.disabled = true;
+
+  loadPyodideIfNeeded().then(async function (py) {
+    statusDot.classList.remove("dot-err");
+    statusTxt.textContent = "running\u2026";
+
+    // Sync text files with Pyodide's virtual filesystem: remove any
+    // previously-written file that's no longer an active tab (renamed,
+    // replaced with a different upload, or removed via ×), then write
+    // the current set. Without this, a deleted/renamed file would keep
+    // "existing" for the rest of the page session.
+    var currentTxtLabels = {};
+    tabs.forEach(function (t) { if (t.type === "txt" && t.label) currentTxtLabels[t.label] = true; });
+    Object.keys(fsWrittenFiles).forEach(function (oldLabel) {
+      if (!currentTxtLabels[oldLabel]) {
+        try { py.FS.unlink(oldLabel); } catch (e) {}
+        delete fsWrittenFiles[oldLabel];
+      }
+    });
+    tabs.forEach(function (t) {
+      if (t.type === "txt" && t.label) {
+        try { py.FS.writeFile(t.label, t.content || ""); fsWrittenFiles[t.label] = true; } catch (e) { console.warn("FS write failed:", e); }
+      }
+    });
+
+    var inputResolve = null;
+    function makeInlineInput(promptText) {
+      return new Promise(function (resolve) {
+        inputResolve = resolve;
+        canvasLog.style.display = "block";
+        var row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:baseline;gap:4px;margin:1px 0;flex-wrap:wrap;";
+        if (promptText) {
+          var span = document.createElement("span");
+          span.style.cssText = "color:var(--text);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre;";
+          span.textContent = promptText;
+          row.appendChild(span);
+        }
+        var inp = document.createElement("input");
+        inp.type = "text";
+        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
+        inp.setAttribute("autocomplete", "off"); inp.setAttribute("spellcheck", "false");
+        row.appendChild(inp);
+        canvasLog.appendChild(row);
+        canvasLog.scrollTop = canvasLog.scrollHeight;
+        setTimeout(function () { inp.focus(); }, 30);
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var val = inp.value; inp.remove();
+            var typed = document.createElement("span");
+            typed.style.cssText = "color:var(--success);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;";
+            typed.textContent = val;
+            row.appendChild(typed);
+            canvasLog.scrollTop = canvasLog.scrollHeight;
+            if (inputResolve) { inputResolve(val); inputResolve = null; }
+          }
+        });
+      });
+    }
+
+    var _outLines = 0, MAX_OUT = 200;
+    py.setStdout({ batched: function (s) {
+      s.split("\n").forEach(function (line, i, arr) {
+        if (i === arr.length - 1 && line === "") return;
+        if (_outLines >= MAX_OUT) {
+          if (_outLines === MAX_OUT) appendCanvasLogLine("\u2026 output capped at " + MAX_OUT + " lines\u2026", "out-warn-line");
+          _outLines++; return;
+        }
+        appendCanvasLogLine(line, "out-ok");
+        _outLines++;
+      });
+    }});
+    py.setStderr({ batched: function (s) {
+      // Python sometimes prints things straight to stderr BEFORE any
+      // exception is raised — e.g. a SyntaxWarning — which never passes
+      // through the exception-based line-translation logic further below,
+      // since it isn't part of a caught error's message at all. Translate
+      // any "<exec>:N:" reference here too, so a warning's line number
+      // matches what the student actually sees rather than the internal
+      // wrapped-file line number (WRAPPER_HEADER_LINES/studentLines are
+      // assigned further below in this same function, but that's fine —
+      // this callback only actually fires once Python is running, by
+      // which point that assignment has already happened).
+      var translated = s.replace(/<exec>:(\d+):/g, function (whole, numStr) {
+        var n = parseInt(numStr, 10);
+        if (typeof WRAPPER_HEADER_LINES !== "undefined" && n > WRAPPER_HEADER_LINES && n <= WRAPPER_HEADER_LINES + studentLines.length) {
+          return "line " + (n - WRAPPER_HEADER_LINES) + ":";
+        }
+        return whole;
+      });
+      appendCanvasLogLine(translated, "out-err");
+    }});
+
+    /* ============================================================
+       INPUT() BRIDGE — real JSPI-based inline UI when the browser
+       and Pyodide support it, automatic fallback to window.prompt()
+       when they don't. Same fix as the J277 Output Viewer — see
+       that file's comments for the full JSPI/run_sync explanation.
+       can_run_sync() is Pyodide's own official feature-detection
+       function for exactly this; NOT universally supported yet
+       (no default Firefox/Safari support as of when this was
+       written), so falling back cleanly is essential, not optional.
+       ============================================================ */
+    var canRunSync = false;
+    try {
+      canRunSync = await py.runPythonAsync("from pyodide.ffi import can_run_sync; can_run_sync()");
+    } catch (e) {
+      canRunSync = false; // older Pyodide without can_run_sync, or JSPI unsupported in this browser
+    }
+
+    var STEP_LIMIT = 10000;
+    var jsInputFn, wrapperHeader;
+
+    /* FIX: both wrapper headers below end in "try:\n    pass\n" — the extra
+       "pass" is deliberate, not a leftover. Confirmed with a real Python
+       compile test that a comments-only (or genuinely empty) student body,
+       once indented inside our try: block, does NOT satisfy Python's
+       requirement that a try: block contain at least one real statement —
+       comments alone don't count, causing a completely spurious
+       "IndentationError: expected an indented block after 'try' statement"
+       that has nothing to do with anything the student wrote. pass is a
+       true no-op, so it has zero effect on genuinely working code; it only
+       matters for the comments-only/empty case, where it's the difference
+       between a spurious crash and correctly showing "No output." First
+       found and fixed in Sandbox (from Andy's own screenshot of this exact
+       error), confirmed again in Don't Forget the Colon, and now here too —
+       same comments-only starter code, same active exposure. Fleet-wide
+       fix, not specific to any one file — see fixes-audit.md. */
+    if (canRunSync) {
+      jsInputFn = py.toPy(function (promptText) { return makeInlineInput(promptText); });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "from pyodide.ffi import run_sync\n" +
+        "_original_input = builtins.input\n" +
+        "async def _async_input(prompt):\n" +
+        "    return str(await _js_input(prompt))\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return run_sync(_async_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n" +
+        "    pass\n";
+    } else {
+      jsInputFn = py.toPy(function (promptText) {
+        var result = window.prompt(promptText || "");
+        return result === null ? "" : String(result);
+      });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "_original_input = builtins.input\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return str(_js_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n" +
+        "    pass\n";
+    }
+    py.globals.set("_js_input", jsInputFn);
+    // Read by the turtle shim's _duration_for() via js._turtleCanAnimate,
+    // NOT a bare Python global — turtle.py runs in its OWN module
+    // namespace once imported, so a value set via py.globals.set() (the
+    // MAIN interpreter's namespace) would raise NameError if referenced
+    // as a bare name inside it. js.* is accessible from any module
+    // regardless of namespace, which is why _turtleDrawAPI already uses
+    // this same approach. Single underscore, not double — a double-
+    // underscore name referenced inside the Turtle class body would
+    // trigger Python's name-mangling, the exact bug already found and
+    // fixed once for _turtleDrawAPI itself.
+    window._turtleCanAnimate = canRunSync;
+    // Theme-aware default stroke/fill colour, read by the shim's own
+    // Turtle.__init__ — black is invisible against the dark theme's near-
+    // black canvas background, confirmed as a real visibility problem
+    // Andy ran into directly. This ONLY changes the starting default; any
+    // colour a student explicitly sets via color()/pencolor()/fillcolor()
+    // passes straight through unaffected, exactly as before — those calls
+    // never reference this value at all. Uses the same off-white as the
+    // dark theme's own --text variable (#e8eaf0) rather than a harsh pure
+    // white, so it sits visually consistent with the rest of the widget's
+    // own dark-mode palette instead of looking like an unrelated colour
+    // choice.
+    window._turtleDefaultColor = document.body.classList.contains("j277-light") ? "black" : "#e8eaf0";
+
+    /* ============================================================
+       TURTLE SHIM — written to Pyodide's virtual filesystem as an
+       actual turtle.py file, BEFORE the student's own code runs, so
+       that "import turtle" finds THIS file rather than attempting to
+       load the real standard-library turtle module (which depends on
+       tkinter — a native GUI toolkit that doesn't exist at all inside
+       a browser/WebAssembly sandbox, confirmed while researching this
+       feature: no browser-based Python environment can run unmodified
+       `import turtle` without a replacement of some kind).
+
+       Every drawing call here goes through window._turtleDrawAPI (set
+       up earlier, outside the run handler, at page-load time) via
+       Pyodide's "import js" bridge — the same JS-interop mechanism
+       already used throughout this file for the input() bridge, not
+       a new/unproven technique.
+
+       Both API styles are supported, since GCSE material teaches
+       both: the module-level functional style (import turtle;
+       turtle.forward(100), as in Andy's own screenshot example) via
+       a default Turtle() instance the module-level functions
+       delegate to, AND the object-oriented style (t = turtle.Turtle();
+       t.forward(100)) via the Turtle class directly.
+       ============================================================ */
+    var TURTLE_SHIM_SRC =
+"import math\n" +
+"import js\n" +
+"try:\n" +
+"    from pyodide.ffi import run_sync as _run_sync\n" +
+"except Exception:\n" +
+"    _run_sync = None\n" +
+"\n" +
+"async def _async_animate(x0, y0, x1, y1, heading, duration_ms, pen_down):\n" +
+"    await js._turtleDrawAPI.animateSegment(x0, y0, x1, y1, heading, duration_ms, pen_down)\n" +
+"\n" +
+"class Turtle:\n" +
+"    def __init__(self):\n" +
+"        self.x = 0.0\n" +
+"        self.y = 0.0\n" +
+"        self.heading_deg = 0.0\n" +
+"        self.pen_is_down = True\n" +
+"        self.filling = False\n" +
+"        self._speed = 3\n" +
+"        self._visible = True\n" +
+"        js._turtleDrawAPI.setStrokeStyle(js._turtleDefaultColor)\n" +
+"        js._turtleDrawAPI.setFillStyle(js._turtleDefaultColor)\n" +
+"        js._turtleDrawAPI.setLineWidth(1)\n" +
+"        self._updateMarker()\n" +
+"\n" +
+"    def _updateMarker(self):\n" +
+"        js._turtleDrawAPI.updateMarker(self.x, self.y, self.heading_deg, self._visible)\n" +
+"\n" +
+"    def _duration_for(self, dist):\n" +
+"        # Speed 0 means no animation at all, matching real turtle's own\n" +
+"        # convention exactly. Otherwise, duration scales with distance (so\n" +
+"        # a short line and a long line feel like consistent MOVEMENT SPEED,\n" +
+"        # not the same fixed time regardless of length) and inversely with\n" +
+"        # the speed setting (1=slowest, 10=fastest), capped at 1200ms per\n" +
+"        # segment so even a very long, slow movement doesn't stall the\n" +
+"        # whole program for multiple seconds.\n" +
+"        if self._speed == 0 or _run_sync is None or not js._turtleCanAnimate:\n" +
+"            return 0\n" +
+"        per_100px = (11 - min(10, max(1, self._speed))) * 35\n" +
+"        return min(1200, per_100px * (abs(dist) / 100.0))\n" +
+"\n" +
+"    def _move_to(self, nx, ny, dist_for_speed):\n" +
+"        duration = self._duration_for(dist_for_speed)\n" +
+"        if duration > 0:\n" +
+"            _run_sync(_async_animate(self.x, self.y, nx, ny, self.heading_deg, duration, self.pen_is_down))\n" +
+"        else:\n" +
+"            if self.pen_is_down:\n" +
+"                js._turtleDrawAPI.beginPath()\n" +
+"                js._turtleDrawAPI.moveTo(self.x, self.y)\n" +
+"                js._turtleDrawAPI.lineTo(nx, ny)\n" +
+"                js._turtleDrawAPI.stroke()\n" +
+"        if self.filling:\n" +
+"            js._turtleDrawAPI.fillLineTo(nx, ny)\n" +
+"        self.x, self.y = nx, ny\n" +
+"        self._updateMarker()\n" +
+"\n" +
+"    def forward(self, dist):\n" +
+"        rad = math.radians(self.heading_deg)\n" +
+"        nx = self.x + dist * math.cos(rad)\n" +
+"        ny = self.y + dist * math.sin(rad)\n" +
+"        self._move_to(nx, ny, dist)\n" +
+"    fd = forward\n" +
+"\n" +
+"    def backward(self, dist):\n" +
+"        self.forward(-dist)\n" +
+"    bk = backward\n" +
+"    back = backward\n" +
+"\n" +
+"    def right(self, angle):\n" +
+"        self.heading_deg -= angle\n" +
+"        self._updateMarker()\n" +
+"    rt = right\n" +
+"\n" +
+"    def left(self, angle):\n" +
+"        self.heading_deg += angle\n" +
+"        self._updateMarker()\n" +
+"    lt = left\n" +
+"\n" +
+"    def penup(self):\n" +
+"        self.pen_is_down = False\n" +
+"    pu = penup\n" +
+"    up = penup\n" +
+"\n" +
+"    def pendown(self):\n" +
+"        self.pen_is_down = True\n" +
+"    pd = pendown\n" +
+"    down = pendown\n" +
+"\n" +
+"    def isdown(self):\n" +
+"        return self.pen_is_down\n" +
+"\n" +
+"    def color(self, c, c2=None):\n" +
+"        js._turtleDrawAPI.setStrokeStyle(c)\n" +
+"        js._turtleDrawAPI.setFillStyle(c2 if c2 is not None else c)\n" +
+"    pencolor = color\n" +
+"\n" +
+"    def fillcolor(self, c):\n" +
+"        js._turtleDrawAPI.setFillStyle(c)\n" +
+"\n" +
+"    def pensize(self, w):\n" +
+"        js._turtleDrawAPI.setLineWidth(w)\n" +
+"    width = pensize\n" +
+"\n" +
+"    def begin_fill(self):\n" +
+"        self.filling = True\n" +
+"        js._turtleDrawAPI.beginFillPath(self.x, self.y)\n" +
+"\n" +
+"    def end_fill(self):\n" +
+"        if self.filling:\n" +
+"            js._turtleDrawAPI.fill()\n" +
+"        self.filling = False\n" +
+"\n" +
+"    def goto(self, x, y=None):\n" +
+"        if y is None:\n" +
+"            x, y = x[0], x[1]\n" +
+"        nx, ny = float(x), float(y)\n" +
+"        dist = math.hypot(nx - self.x, ny - self.y)\n" +
+"        self._move_to(nx, ny, dist)\n" +
+"    setpos = goto\n" +
+"    setposition = goto\n" +
+"\n" +
+"    def setx(self, x):\n" +
+"        self.goto(x, self.y)\n" +
+"\n" +
+"    def sety(self, y):\n" +
+"        self.goto(self.x, y)\n" +
+"\n" +
+"    def setheading(self, angle):\n" +
+"        self.heading_deg = angle\n" +
+"        self._updateMarker()\n" +
+"    seth = setheading\n" +
+"\n" +
+"    def home(self):\n" +
+"        self.goto(0, 0)\n" +
+"        self.setheading(0)\n" +
+"\n" +
+"    def speed(self, s=None):\n" +
+"        if s is not None:\n" +
+"            self._speed = s\n" +
+"            return None\n" +
+"        return self._speed\n" +
+"\n" +
+"    def position(self):\n" +
+"        return (self.x, self.y)\n" +
+"    pos = position\n" +
+"\n" +
+"    def xcor(self):\n" +
+"        return self.x\n" +
+"\n" +
+"    def ycor(self):\n" +
+"        return self.y\n" +
+"\n" +
+"    def heading(self):\n" +
+"        return self.heading_deg % 360\n" +
+"\n" +
+"    def distance(self, x, y=None):\n" +
+"        if y is None:\n" +
+"            x, y = x[0], x[1]\n" +
+"        return math.hypot(self.x - x, self.y - y)\n" +
+"\n" +
+"    def hideturtle(self):\n" +
+"        self._visible = False\n" +
+"        self._updateMarker()\n" +
+"    ht = hideturtle\n" +
+"\n" +
+"    def showturtle(self):\n" +
+"        self._visible = True\n" +
+"        self._updateMarker()\n" +
+"    st = showturtle\n" +
+"\n" +
+"    def isvisible(self):\n" +
+"        return self._visible\n" +
+"\n" +
+"Pen = Turtle\n" +
+"\n" +
+"_default_pen = Turtle()\n" +
+"\n" +
+"def forward(dist): _default_pen.forward(dist)\n" +
+"fd = forward\n" +
+"def backward(dist): _default_pen.backward(dist)\n" +
+"bk = backward\n" +
+"back = backward\n" +
+"def right(angle): _default_pen.right(angle)\n" +
+"rt = right\n" +
+"def left(angle): _default_pen.left(angle)\n" +
+"lt = left\n" +
+"def penup(): _default_pen.penup()\n" +
+"pu = penup\n" +
+"up = penup\n" +
+"def pendown(): _default_pen.pendown()\n" +
+"pd = pendown\n" +
+"down = pendown\n" +
+"def isdown(): return _default_pen.isdown()\n" +
+"def color(c, c2=None): _default_pen.color(c, c2)\n" +
+"pencolor = color\n" +
+"def fillcolor(c): _default_pen.fillcolor(c)\n" +
+"def pensize(w): _default_pen.pensize(w)\n" +
+"width = pensize\n" +
+"def begin_fill(): _default_pen.begin_fill()\n" +
+"def end_fill(): _default_pen.end_fill()\n" +
+"def goto(x, y=None): _default_pen.goto(x, y)\n" +
+"setpos = goto\n" +
+"setposition = goto\n" +
+"def setx(x): _default_pen.setx(x)\n" +
+"def sety(y): _default_pen.sety(y)\n" +
+"def setheading(angle): _default_pen.setheading(angle)\n" +
+"seth = setheading\n" +
+"def home(): _default_pen.home()\n" +
+"def speed(s=None): return _default_pen.speed(s)\n" +
+"def position(): return _default_pen.position()\n" +
+"pos = position\n" +
+"def xcor(): return _default_pen.xcor()\n" +
+"def ycor(): return _default_pen.ycor()\n" +
+"def heading(): return _default_pen.heading()\n" +
+"def distance(x, y=None): return _default_pen.distance(x, y)\n" +
+"def hideturtle(): _default_pen.hideturtle()\n" +
+"ht = hideturtle\n" +
+"def showturtle(): _default_pen.showturtle()\n" +
+"st = showturtle\n" +
+"def isvisible(): return _default_pen.isvisible()\n" +
+"\n" +
+"class _Screen:\n" +
+"    def bgcolor(self, c): js._turtleDrawAPI.setBackground(c)\n" +
+"    def title(self, t): pass\n" +
+"    def setup(self, *a, **kw): pass\n" +
+"    def screensize(self, *a, **kw): pass\n" +
+"    def exitonclick(self): pass\n" +
+"    def bye(self): pass\n" +
+"    def clear(self): js._turtleDrawAPI.clearAll()\n" +
+"\n" +
+"_default_screen = _Screen()\n" +
+"def Screen(): return _default_screen\n" +
+"def bgcolor(c): _default_screen.bgcolor(c)\n" +
+"def clearscreen(): js._turtleDrawAPI.clearAll()\n" +
+"\n" +
+"def done(): pass\n" +
+"def mainloop(): pass\n" +
+"def delay(*a, **kw): pass\n" +
+"def tracer(*a, **kw): pass\n" +
+"def update(): pass\n";
+
+    /* FIX: clear any previously-imported turtle module before writing the
+       fresh copy and running the student's code. Confirmed this is a real
+       bug, not a hypothetical one, from Andy's own description — clicking
+       Run a second time correctly cleared the canvas, but the turtle
+       itself kept moving from wherever it ended up on the PREVIOUS run
+       instead of starting fresh at (0,0) facing 0 degrees. Root cause,
+       verified precisely with real Python: Pyodide reuses the same
+       interpreter across every Run click (rather than restarting from
+       scratch each time), and Python's own import system caches modules
+       in sys.modules — so "import turtle" on a second run is a silent
+       no-op that does NOT re-execute turtle.py, meaning _default_pen
+       (created once, at first import) never gets recreated and just
+       carries its position/heading over from wherever the previous run
+       left it. Explicitly evicting turtle from sys.modules first forces
+       a genuine, complete re-import next time the student's own code
+       does "import turtle" — confirmed this produces an identical result
+       on run 2 as a script's own very first run. */
+    try {
+      await py.runPythonAsync("import sys\nsys.modules.pop('turtle', None)");
+    } catch (e) {}
+
+    py.FS.writeFile("turtle.py", TURTLE_SHIM_SRC);
+
+    // How many lines of setup precede the student's own code in the
+    // wrapped source, so a Python traceback's real line number can be
+    // translated back to the line the student actually sees. Computed
+    // from wrapperHeader itself (not hardcoded) so this can never drift
+    // out of sync — the two branches above have different line counts
+    // (JSPI is 3 lines longer), and this must reflect whichever one
+    // was actually used.
+    var WRAPPER_HEADER_LINES = wrapperHeader.split("\n").length - 1;
+    var studentLines = code.split("\n");
+    var wrapped =
+      wrapperHeader +
+      studentLines.map(function (l) { return "    " + l; }).join("\n") + "\n" +
+      "finally:\n" +
+      "    sys.settrace(None)\n" +
+      "    builtins.input = _original_input\n";
+
+    try {
+      window.__turtleHasDrawn = false;
+      await py.runPythonAsync(wrapped);
+      if (!window.__turtleHasDrawn && !canvasLog.children.length) {
+        canvasPlaceholder.textContent = "Your code ran, but didn't draw anything or print any output.";
+        canvasPlaceholder.style.display = "flex";
+      }
+      statusDot.classList.remove("dot-err");
+      statusTxt.textContent = "Python 3.12 · done";
+    } catch (err) {
+      var raw = err.message || String(err);
+      var cleaned = (function (rawMsg) {
+        // Only a frame Python itself compiled from the student's own code
+        // block is ever shown — identified two ways, both required: the
+        // frame's file is "<exec>" (true of the wrapper's own functions
+        // too, since they're compiled from the same exec'd text) AND its
+        // line number actually falls inside the student's code range (the
+        // wrapper's own lines don't). This is deliberately an ALLOWLIST,
+        // not a list of known-internal patterns to hide — any Pyodide/
+        // CPython internal frame, including ones we've never seen before,
+        // is automatically excluded by simply not matching, rather than
+        // needing to be individually recognised and added to a blocklist.
+        var studentRangeStart = WRAPPER_HEADER_LINES + 1;
+        var studentRangeEnd = WRAPPER_HEADER_LINES + studentLines.length;
+        var lines = rawMsg.split("\n");
+        var lineNum = null, studentCode = [], errorType = "";
+        var i = 0;
+        while (i < lines.length) {
+          var t = lines[i].trim();
+          if (!t || t === "Traceback (most recent call last):") { i++; continue; }
+
+          var fileM = t.match(/^File "([^"]*)", line (\d+)/);
+          if (fileM) {
+            var rawLine = parseInt(fileM[2], 10);
+            var isStudentFrame = fileM[1] === "<exec>" && rawLine >= studentRangeStart && rawLine <= studentRangeEnd;
+            if (isStudentFrame) lineNum = rawLine - WRAPPER_HEADER_LINES;
+            i++;
+            if (i < lines.length) {
+              var codeLineTrim = lines[i].trim();
+              var isFrameOrErrorLine = /^File "/.test(codeLineTrim) ||
+                /^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(codeLineTrim);
+              if (codeLineTrim && !isFrameOrErrorLine) {
+                if (isStudentFrame) studentCode.push(lines[i]);
+                i++;
+                if (i < lines.length && /^\^+$/.test(lines[i].trim())) i++; // drop any "^^^" pointer line
+              }
+            }
+            continue;
+          }
+
+          if (/^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(t)) {
+            // SyntaxError/IndentationError messages sometimes embed their
+            // OWN line reference directly in the text itself — e.g.
+            // "...expected an indented block after 'if' statement on line
+            // N" — a completely different format from the "File "...",
+            // line N" pattern handled above (confirmed with a real Python
+            // test: this is a separate code path entirely, not something
+            // the logic above happens to also catch). Translate this
+            // embedded reference too, when it falls inside the student's
+            // own code range, so a genuine empty-block error a student
+            // introduces themselves (e.g. an empty if:/for:/while: body)
+            // points at their own line number instead of an internal one.
+            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+              var n = parseInt(numStr, 10);
+              if (n >= studentRangeStart && n <= studentRangeEnd) {
+                return "on line " + (n - WRAPPER_HEADER_LINES);
+              }
+              return whole;
+            });
+            errorType = t; i++; continue;
+          }
+          i++;
+        }
+        var parts = [];
+        if (errorType) parts.push(lineNum ? "Line " + lineNum + " — " + errorType : errorType);
+        if (studentCode.length > 0) parts.push(studentCode.join("\n").trim());
+        if (parts.length === 0) return (rawMsg.split("\n").filter(function (l) { return l.trim(); }).pop() || rawMsg).trim();
+        return parts.join("\n");
+      })(raw);
+
+      if (cleaned.indexOf("__INFINITE_LOOP__") !== -1) {
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "infinite loop detected";
+        var loopPanel = document.createElement("div");
+        loopPanel.className = "warn-panel";
+        loopPanel.innerHTML =
+          '<div class="warn-head">\u26A0\uFE0F Your loop seems to be running forever\u2026</div>' +
+          '<div class="warn-detail">Stopped after ' + STEP_LIMIT.toLocaleString() + " steps.</div>";
+        var loopBtns = document.createElement("div");
+        loopBtns.className = "warn-btns";
+        var editBtn2 = document.createElement("button");
+        editBtn2.className = "warn-btn warn-btn-plain";
+        editBtn2.textContent = "\u270F Edit my code";
+        editBtn2.addEventListener("click", function () {
+          canvasWarnOverlay.style.display = "none";
+          canvasWarnOverlay.innerHTML = "";
+          statusDot.classList.remove("dot-err");
+          statusTxt.textContent = "Python 3.12 · Pyodide · ready";
+          codeTa.focus();
+        });
+        loopBtns.appendChild(editBtn2);
+        loopPanel.appendChild(loopBtns);
+        canvasWarnOverlay.innerHTML = "";
+        canvasWarnOverlay.appendChild(loopPanel);
+        canvasWarnOverlay.style.display = "flex";
+      } else if (cleaned.indexOf("SystemExit") === -1) {
+        appendCanvasLogLine(cleaned.trim(), "out-err");
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "error";
+      } else {
+        statusTxt.textContent = "Python 3.12 · done";
+      }
+    }
+    runBtn.disabled = false;
+  }).catch(function (err) {
+    appendCanvasLogLine("Could not load Python runtime: " + err.message, "out-err");
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "load failed";
+    runBtn.disabled = false;
+  });
+});
+
+/* ============================================================
+   RESIZABLE SPLIT PANE — drag the handle to resize editor/output
+   ============================================================ */
+(function initResizablePane() {
+  var ceBody = document.getElementById("ceBody");
+  var editorPane = document.getElementById("editorPane");
+  var vHandle = document.getElementById("vHandle");
+  var isResizing = false, startX = 0, startW = 0;
+
+  vHandle.addEventListener("mousedown", function (e) {
+    isResizing = true;
+    startX = e.clientX;
+    startW = editorPane.offsetWidth;
+    vHandle.classList.add("active");
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", function (e) {
+    if (!isResizing) return;
+    var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
+    var newW = Math.min(Math.max(80, startW + (e.clientX - startX)), totalW - 80);
+    editorPane.style.flex = "0 0 " + newW + "px";
+  });
+
+  document.addEventListener("mouseup", function () {
+    if (isResizing) {
+      isResizing = false;
+      vHandle.classList.remove("active");
+      document.body.style.userSelect = "";
+    }
+  });
+
+  // Touch support (tablets)
+  vHandle.addEventListener("touchstart", function (e) {
+    isResizing = true;
+    startX = e.touches[0].clientX;
+    startW = editorPane.offsetWidth;
+    vHandle.classList.add("active");
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!isResizing) return;
+    var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
+    var newW = Math.min(Math.max(80, startW + (e.touches[0].clientX - startX)), totalW - 80);
+    editorPane.style.flex = "0 0 " + newW + "px";
+  }, { passive: true });
+  document.addEventListener("touchend", function () {
+    if (isResizing) { isResizing = false; vHandle.classList.remove("active"); }
+  });
+})();
+
+/* ============================================================
+   FULL SCREEN
+   ============================================================ */
+(function initFullscreen() {
+  var widgetRoot = document.getElementById("widgetRoot");
+  var fsBtn = document.getElementById("fsBtn");
+  var fsIcon = document.getElementById("fsIcon");
+  var fsLbl = document.getElementById("fsLbl");
+  var isFallbackExpanded = false;
+
+  function setBtnState(isFull) {
+    fsIcon.className = isFull ? "ti ti-x" : "ti ti-maximize";
+    fsLbl.textContent = isFull ? "Exit full screen" : "Full screen";
+    fsBtn.title = isFull ? "Exit full screen (Esc)" : "Full screen";
+  }
+
+  function enterFullscreen() {
+    if (widgetRoot.requestFullscreen) {
+      widgetRoot.requestFullscreen().then(function () { setBtnState(true); }).catch(expandFallback);
+    } else if (widgetRoot.webkitRequestFullscreen) {
+      widgetRoot.webkitRequestFullscreen();
+      setBtnState(true);
+    } else {
+      expandFallback();
+    }
+  }
+
+  function expandFallback() {
+    // Fallback for browsers/iframes that block the real Fullscreen API
+    // (e.g. an <iframe> embed missing the "allowfullscreen" attribute)
+    isFallbackExpanded = true;
+    widgetRoot.classList.add("j277-fs-fallback");
+    setBtnState(true);
+  }
+
+  function exitFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    if (isFallbackExpanded) {
+      widgetRoot.classList.remove("j277-fs-fallback");
+      isFallbackExpanded = false;
+    }
+    setBtnState(false);
+  }
+
+  document.addEventListener("fullscreenchange", function () {
+    if (!document.fullscreenElement) setBtnState(false);
+  });
+  document.addEventListener("webkitfullscreenchange", function () {
+    if (!document.webkitFullscreenElement) setBtnState(false);
+  });
+
+  fsBtn.addEventListener("click", function () {
+    if (document.fullscreenElement || document.webkitFullscreenElement || isFallbackExpanded) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  });
+})();
+
+/* ============================================================
+   AUTO-RESIZE — reports this widget's real height to the parent
+   page via postMessage, so the host <iframe> can be sized to fit
+   exactly with no leftover dead space. Requires a small listener
+   script on the host page (once, site-wide) — see chat for it.
+   Harmless no-op if that listener was never added.
+   ============================================================ */
+(function initAutoResize() {
+  var lastSentHeight = 0;
+
+  function currentHeight() {
+    return Math.ceil(document.getElementById("widgetRoot").getBoundingClientRect().height);
+  }
+  function postHeight(h) {
+    try {
+      window.parent.postMessage({ source: "j277-code-widget", pageId: PAGE_ID, height: h }, "*");
+    } catch (e) {}
+  }
+
+  // Used for ongoing updates once things have settled — only posts when
+  // the height has genuinely changed, to avoid redundant messages.
+  function sendHeightIfChanged() {
+    var h = currentHeight();
+    if (h === lastSentHeight) return;
+    lastSentHeight = h;
+    postHeight(h);
+  }
+
+  // Fires on ANY change to the widget's rendered size — tab switches,
+  // the text-file full-width view, topbar wrapping at narrow widths,
+  // etc. — without needing to hook each cause individually.
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { sendHeightIfChanged(); }).observe(document.getElementById("widgetRoot"));
+  } else {
+    setInterval(sendHeightIfChanged, 500); // fallback for very old browsers
+  }
+  window.addEventListener("resize", sendHeightIfChanged);
+
+  // STARTUP RETRY — the host page's own listener script may not be
+  // registered yet by the time this widget finishes loading, especially
+  // on a very large host page where a footer-injected <script> only runs
+  // once everything above it has parsed (can take several seconds). A
+  // couple of early one-off sends aren't enough in that case: they'd
+  // arrive before anyone's listening and be lost for good, and — this is
+  // the part that would silently defeat just adding more one-off sends —
+  // sendHeightIfChanged()'s "only post if the value changed" guard would
+  // then swallow every later retry too, since the height hasn't actually
+  // changed. So for the first 20 seconds, resend UNCONDITIONALLY (bypass
+  // that guard entirely) once a second, guaranteeing the parent eventually
+  // gets at least one message no matter how late it finishes registering.
+  var retries = 0;
+  var retryTimer = setInterval(function () {
+    var h = currentHeight();
+    lastSentHeight = h;
+    postHeight(h);
+    retries++;
+    if (retries >= 20) clearInterval(retryTimer);
+  }, 1000);
+})();
+
+/* ── Init ──────────────────────────────────────────────────── */
+applyFontSize();
+updateLineNums();
+updateHighlight();
+</script>
+</body>
+</html>
