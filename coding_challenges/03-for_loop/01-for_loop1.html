@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>For Loop Challenge 1 — J277 Code Editor</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<title>For Loop Challenge 01 — J277 Code Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
 <style>
 /* ============================================================
@@ -29,7 +29,7 @@ body.j277-light{
   --bg:#ffffff; --surface:#ffffff; --surface2:#eef0f5; --border:#d7dbe4;
   --accent:#2563eb; --success:#1a9c66; --error:#d1453b; --warn:#c5651f;
   --text:#1b1f2a; --text-muted:#6b7280;
-  --hl-kw:#0000ff; --hl-bi:#795e26; --hl-str:#a31515; --hl-num:#098658; --hl-cm:#008000;
+  --hl-kw:#aa22ff; --hl-bi:var(--text); --hl-str:#a31515; --hl-num:#0000ff; --hl-cm:#008000;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 /* NOTE: deliberately no html/body rules here. This file is often pasted
@@ -89,7 +89,7 @@ body{
   border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .title{
-  font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:var(--text);
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; font-weight:700; color:var(--text);
   display:flex; align-items:center; gap:6px; white-space:nowrap;
 }
 .title i{ color:var(--accent); font-size:15px; }
@@ -126,7 +126,7 @@ body{
 .v-handle-dots{ display:flex; flex-direction:column; gap:3px; pointer-events:none; }
 .v-handle-dots span{ width:2px; height:2px; border-radius:50%; background:var(--text-muted); opacity:.6; }
 .pane-lbl{
-  font-size:9px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.07em;
+  font-size:9px; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; text-transform:uppercase; letter-spacing:.07em;
   color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
 }
 
@@ -137,7 +137,7 @@ body{
 }
 .file-tab{
   display:flex; align-items:center; gap:5px; padding:6px 10px; font-size:10.5px;
-  font-family:'Space Mono',monospace; cursor:pointer; border-bottom:2px solid transparent;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; cursor:pointer; border-bottom:2px solid transparent;
   white-space:nowrap; color:var(--text-muted); user-select:none;
 }
 .file-tab.active{ background:var(--bg); border-bottom-color:var(--accent); color:var(--accent); font-weight:600; }
@@ -146,7 +146,7 @@ body{
   border:none; background:none; color:inherit; cursor:pointer; font-size:13px; line-height:1; padding:0 0 0 4px;
 }
 .file-tab-input{
-  background:none; border:none; outline:none; font-family:'Space Mono',monospace; font-size:10.5px;
+  background:none; border:none; outline:none; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:10.5px;
   color:inherit; width:82px; font-weight:inherit;
 }
 .file-tab-open{
@@ -169,19 +169,19 @@ body{
   border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .txt-editor-ta{
-  flex:1; font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  flex:1; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
   color:var(--text); background:var(--bg); border:none; outline:none; resize:none; tab-size:4;
 }
 .editor-area{ flex:1; display:flex; min-height:0; overflow:hidden; }
 .line-nums{
-  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:8px 6px 8px 10px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 6px 8px 10px;
   color:var(--text-muted); background:var(--surface); text-align:right; user-select:none;
   overflow:hidden; white-space:pre; flex-shrink:0; border-right:0.5px solid var(--border);
 }
 .hl-wrap{ position:relative; flex:1; overflow:hidden; background:var(--bg); min-height:0; }
 .hl-overlay{
-  position:absolute; inset:0; font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px;
-  pointer-events:none; white-space:pre-wrap; word-wrap:break-word; tab-size:4; overflow:hidden;
+  position:absolute; inset:0; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px;
+  pointer-events:none; white-space:pre; tab-size:4; overflow:hidden;
   color:var(--text);
 }
 .hl-overlay .hl-kw{ color:var(--hl-kw); }
@@ -190,14 +190,14 @@ body{
 .hl-overlay .hl-num{ color:var(--hl-num); }
 .hl-overlay .hl-cm{ color:var(--hl-cm); }
 .code-ta{
-  font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px; color:transparent;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px; color:transparent;
   background:transparent; caret-color:var(--text); border:none; outline:none; resize:none;
   width:100%; height:100%; tab-size:4; position:relative; z-index:1;
-  overflow-y:auto; overflow-x:hidden; box-sizing:border-box;
+  overflow-y:auto; overflow-x:auto; white-space:pre; box-sizing:border-box;
 }
 .out-pane{ border-left:0.5px solid var(--border); }
 .output{
-  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:8px 10px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 10px;
   background:var(--surface2); flex:1; overflow:auto; white-space:pre-wrap; color:var(--text);
 }
 .out-ok{ color:var(--success); }
@@ -214,13 +214,13 @@ body{
 .footer-left{ display:flex; align-items:center; gap:6px; }
 .dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
 .dot-err{ background:var(--error); }
-.footer-txt{ font-size:10px; color:var(--text-muted); font-family:'Space Mono',monospace; }
-.hint{ font-size:9.5px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
 
 /* Infinite-loop / warning panel */
 .warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
 .warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
-.warn-detail{ font-size:11px; color:var(--text-muted); font-family:'Space Mono',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; margin-bottom:10px; line-height:1.6; }
 .warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
 .warn-btn{
   display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
@@ -240,7 +240,7 @@ body{
 
 <div class="wrap" id="widgetRoot">
   <div class="topbar">
-    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">For Loop Challenge 1</span></div>
+    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">For Loop Challenge 01</span></div>
     <div class="spacer"></div>
     <div class="font-row">
       <button id="fontDown" title="Smaller text">A-</button>
@@ -269,12 +269,12 @@ body{
 
   <div class="ce-body" id="ceBody">
     <div class="pane" id="editorPane" style="flex:1.35;">
-      <div class="pane-lbl" id="editorPaneLbl">for_loop_challenge_1.py</div>
+      <div class="pane-lbl" id="editorPaneLbl">forloop_challenge_01.py</div>
       <div class="editor-area">
         <div class="line-nums" id="lineNums">1</div>
         <div class="hl-wrap">
           <div class="hl-overlay" id="hlOverlay" aria-hidden="true"></div>
-          <textarea class="code-ta" id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+          <textarea class="code-ta" id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
         </div>
       </div>
     </div>
@@ -330,25 +330,45 @@ var PAGE_ID = (function () {
    the rest of the file for "Challenge 1" / "array_challenge_1"
    by hand, it's no longer hardcoded anywhere else.
    ============================================================ */
-var CHALLENGE_TITLE = "For Loop Challenge 1";        // shown in the tab title + topbar heading
-var CHALLENGE_FILENAME = "for_loop_challenge_1";     // used for the .py filename everywhere (no extension)
+var CHALLENGE_TITLE = "For Loop Challenge 01";        // shown in the tab title + topbar heading
+var CHALLENGE_FILENAME = "forloop_challenge_01";     // used for the .py filename everywhere (no extension)
 
 document.title = CHALLENGE_TITLE + " — J277 Code Editor";
 document.getElementById("challengeTitleEl").textContent = CHALLENGE_TITLE;
 document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py";
 
+/* FIX: line-number gutter misalignment on wrapped long lines (fix #5 in
+   fixes-audit.md). This file was originally built from Comments Challenge
+   1, specifically to inherit that file's pass-statement and line-
+   translation fixes — but Comments Challenge 1 itself never had this
+   particular gutter fix applied, so this file silently inherited that
+   gap along with the fixes it was built to pick up. Found from Andy's
+   own screenshots showing gutter numbers drifting out of alignment with
+   their visual rows as long comment lines wrapped. Fixed the same way as
+   Comments Challenge 2 originally was: .hl-overlay switched from
+   white-space:pre-wrap/word-wrap:break-word to plain white-space:pre,
+   .code-ta switched from overflow-x:hidden to overflow-x:auto with
+   white-space:pre, and wrap="off" added to the textarea itself — this
+   stops the textarea/overlay from visually wrapping at all, so the
+   gutter's one-number-per-logical-line counting stays correctly aligned,
+   with horizontal scroll available for genuinely long lines instead. */
+
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   First challenge of a new series (For Loop Challenges). Originally
-   supplied directly in chat, then reconciled against the full
-   "For_loop_challenges_1-10.py" export upload to match the exact
-   blank-line spacing of the authoritative source. A "rearrange
-   these lines" exercise: as given, this is a clean IndentationError
-   (the `for` has no body at all, since `print("kebab")` sits before
-   it, not inside it) — verified against a real Python interpreter.
-   Correct fix is to swap the order AND indent print() inside the
-   loop, producing "kebab" ten times. Preserved exactly as supplied.
+   For Loop Challenge 01 — content supplied directly in chat, from
+   a NEW "For loop challenges 1-10.py" file Andy uploaded — this is
+   the first of a new series, built fresh from the current, fully-
+   fixed base rather than migrated from an old file. A genuinely
+   different exercise style from the array series: not fixing a bug,
+   but REARRANGING two lines that are simply in the wrong order (the
+   task's own hint that indentation "might" also be needed is
+   accurate too). Verified precisely with real Python: as given, the
+   "for" loop has no indented body beneath it at all (it's the very
+   last line), correctly raising IndentationError: expected an
+   indented block after 'for' statement. Confirmed the intended
+   rearrangement — the for loop first, print("kebab") indented
+   underneath it — correctly prints "kebab" exactly 10 times.
    ============================================================ */
 var STARTER_CODE =
 "#For loop challenge1 (GCSECS.COM)\n" +
@@ -535,6 +555,21 @@ function loadPyodideIfNeeded() {
    PRE-RUN INFINITE LOOP SCANNER (static check, no execution)
    ============================================================ */
 function detectInfiniteLoop(code) {
+  // Strip triple-quoted string blocks BEFORE scanning — this is a simple
+  // text-pattern scanner, not a real Python parser, so without this it
+  // can't tell the difference between an ACTUAL while-loop and one that's
+  // just sitting inertly inside a '''...'''/\"\"\"...\"\"\" string (e.g. an
+  // intentionally-incomplete code stub shown for a student to later
+  // uncomment). Confirmed this exact false positive with real testing:
+  // a triple-quoted block containing "while x < N:" with no visible
+  // modification of x was incorrectly flagged as an infinite loop, even
+  // though the string is never executed as code at all. Each stripped
+  // block is replaced with the same number of newlines it contained, so
+  // nothing downstream that counts lines gets thrown off by this.
+  code = code.replace(/'''[\s\S]*?'''|"""[\s\S]*?"""/g, function (match) {
+    var newlineCount = (match.match(/\n/g) || []).length;
+    return new Array(newlineCount + 1).join("\n");
+  });
   var lines = code.split("\n");
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i], trimmed = line.trim();
@@ -903,13 +938,13 @@ runBtn.addEventListener("click", function () {
         row.style.cssText = "display:flex;align-items:baseline;gap:4px;margin:1px 0;flex-wrap:wrap;";
         if (promptText) {
           var span = document.createElement("span");
-          span.style.cssText = "color:var(--text);font-family:'Space Mono',monospace;white-space:pre;";
+          span.style.cssText = "color:var(--text);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre;";
           span.textContent = promptText;
           row.appendChild(span);
         }
         var inp = document.createElement("input");
         inp.type = "text";
-        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
+        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
         inp.setAttribute("autocomplete", "off"); inp.setAttribute("spellcheck", "false");
         row.appendChild(inp);
         output.appendChild(row);
@@ -919,7 +954,7 @@ runBtn.addEventListener("click", function () {
           if (e.key === "Enter") {
             var val = inp.value; inp.remove();
             var typed = document.createElement("span");
-            typed.style.cssText = "color:var(--success);font-family:'Space Mono',monospace;";
+            typed.style.cssText = "color:var(--success);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;";
             typed.textContent = val;
             row.appendChild(typed);
             output.scrollTop = output.scrollHeight;
@@ -936,7 +971,7 @@ runBtn.addEventListener("click", function () {
         if (_outLines >= MAX_OUT) {
           if (_outLines === MAX_OUT) {
             var cap = document.createElement("div");
-            cap.style.cssText = "font-family:'Space Mono',monospace;color:var(--warn);font-style:italic;";
+            cap.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;color:var(--warn);font-style:italic;";
             cap.textContent = "\u2026 output capped at " + MAX_OUT + " lines — checking for infinite loop\u2026";
             output.appendChild(cap);
           }
@@ -995,6 +1030,21 @@ runBtn.addEventListener("click", function () {
     var STEP_LIMIT = 10000;
     var jsInputFn, wrapperHeader;
 
+    /* FIX: both wrapper headers below end in "try:\n    pass\n" — the extra
+       "pass" is deliberate, not a leftover. Confirmed with a real Python
+       compile test that a comments-only (or genuinely empty) student body,
+       once indented inside our try: block, does NOT satisfy Python's
+       requirement that a try: block contain at least one real statement —
+       comments alone don't count, causing a completely spurious
+       "IndentationError: expected an indented block after 'try' statement"
+       that has nothing to do with anything the student wrote. pass is a
+       true no-op, so it has zero effect on genuinely working code; it only
+       matters for the comments-only/empty case, where it's the difference
+       between a spurious crash and correctly showing "No output." First
+       found and fixed in Sandbox (from Andy's own screenshot of this exact
+       error), confirmed again in Don't Forget the Colon, and now here too —
+       same comments-only starter code, same active exposure. Fleet-wide
+       fix, not specific to any one file — see fixes-audit.md. */
     if (canRunSync) {
       jsInputFn = py.toPy(function (promptText) { return makeInlineInput(promptText); });
       wrapperHeader =
@@ -1014,7 +1064,8 @@ runBtn.addEventListener("click", function () {
         "            raise Exception('__INFINITE_LOOP__')\n" +
         "    return _j277_trace\n" +
         "sys.settrace(_j277_trace)\n" +
-        "try:\n";
+        "try:\n" +
+        "    pass\n";
     } else {
       jsInputFn = py.toPy(function (promptText) {
         var result = window.prompt(promptText || "");
@@ -1034,7 +1085,8 @@ runBtn.addEventListener("click", function () {
         "            raise Exception('__INFINITE_LOOP__')\n" +
         "    return _j277_trace\n" +
         "sys.settrace(_j277_trace)\n" +
-        "try:\n";
+        "try:\n" +
+        "    pass\n";
     }
     py.globals.set("_js_input", jsInputFn);
 
@@ -1101,6 +1153,24 @@ runBtn.addEventListener("click", function () {
           }
 
           if (/^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(t)) {
+            // SyntaxError/IndentationError messages sometimes embed their
+            // OWN line reference directly in the text itself — e.g.
+            // "...expected an indented block after 'if' statement on line
+            // N" — a completely different format from the "File "...",
+            // line N" pattern handled above (confirmed with a real Python
+            // test: this is a separate code path entirely, not something
+            // the logic above happens to also catch). Translate this
+            // embedded reference too, when it falls inside the student's
+            // own code range, so a genuine empty-block error a student
+            // introduces themselves (e.g. an empty if:/for:/while: body)
+            // points at their own line number instead of an internal one.
+            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+              var n = parseInt(numStr, 10);
+              if (n >= studentRangeStart && n <= studentRangeEnd) {
+                return "on line " + (n - WRAPPER_HEADER_LINES);
+              }
+              return whole;
+            });
             errorType = t; i++; continue;
           }
           i++;
@@ -1137,7 +1207,7 @@ runBtn.addEventListener("click", function () {
       } else if (cleaned.indexOf("SystemExit") === -1) {
         var d = document.createElement("div");
         d.className = "out-err";
-        d.style.cssText = "font-family:'Space Mono',monospace;white-space:pre-wrap;";
+        d.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre-wrap;";
         d.textContent = cleaned.trim();
         output.appendChild(d);
         statusDot.classList.add("dot-err");
