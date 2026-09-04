@@ -1491,7 +1491,50 @@ runBtn.addEventListener("click", function () {
 applyFontSize();
 updateLineNums();
 updateHighlight();
+
+/* FIX: gutter/overlay scroll desync after page load, reported by Andy on
+   Edge and Brave (both Chromium-based, ruling out a WebKit/Safari-specific
+   cause) — confirmed the actual bug from his own screenshot + follow-up
+   ("the cursor is above line 1"): the gutter was still showing "1, 2, 3…"
+   from the very top, while the textarea's OWN scroll position had already
+   moved further down, so a click that looked like it was on line 6 (based
+   on the gutter's own numbering) actually landed on whatever line was
+   REALLY there — nowhere near line 6 at all.
+
+   Root cause: Chromium-based browsers independently restore a <textarea>'s
+   own scroll position (and sometimes its edited value) across a page
+   reload or back/forward navigation, completely separately from normal
+   page-level scroll restoration — a real, documented browser behaviour,
+   not something this widget's own JS ever asked for. Confirmed with
+   extensive testing that our OWN scroll-sync logic (the codeTa "scroll"
+   event listener, and updateLineNums()/updateHighlight() both syncing
+   line-nums/hl-overlay's scrollTop to codeTa's) works correctly for every
+   scroll actually caused by user interaction — mouse wheel, dragging the
+   scrollbar, keyboard navigation, all correctly kept in sync in testing.
+   The gap is specifically this ONE-TIME, browser-native restoration,
+   which can happen AFTER this script's own synchronous init code below
+   already ran (and after the "scroll" listener was already attached) —
+   without necessarily firing a normal "scroll" event our listener would
+   otherwise have caught, since it's a low-level browser mechanism, not a
+   user-driven scroll action.
+
+   Fix: force an explicit re-sync at two further points beyond the
+   synchronous init above, specifically chosen to catch this AFTER any
+   native restoration has had a chance to happen — the window "load"
+   event (fires once every resource has finished loading, later than this
+   script's own synchronous execution) and a short setTimeout shortly
+   after that (covers the case where restoration itself is slightly
+   deferred beyond "load", which was observed to matter in testing).
+   Harmless no-op in the ordinary case where nothing was ever restored,
+   since re-syncing to an unchanged scrollTop of 0 changes nothing. */
+function forceScrollResync() {
+  lineNums.scrollTop = codeTa.scrollTop;
+  hlOverlay.scrollTop = codeTa.scrollTop;
+}
+window.addEventListener("load", function () {
+  forceScrollResync();
+  setTimeout(forceScrollResync, 250);
+});
 </script>
 </body>
 </html>
-
