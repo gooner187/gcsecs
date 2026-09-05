@@ -268,7 +268,22 @@ body{
   <input type="file" id="openFileInput" accept=".py,.txt,.csv" style="display:none;" />
 
   <div class="ce-body" id="ceBody">
-    <div class="pane" id="editorPane" style="flex:1.35;">
+    <div class="pane" id="editorPane" style="flex:3;">
+      <!-- FIX: default split changed from flex:1.35 (~57%) to flex:3
+           (~75%, given outputPane stays at flex:1 -> 3/(3+1)=0.75).
+           Andy's own direct testing established this precisely: the
+           ghosting/misalignment he found is repeatably present at the
+           original, narrower default split, and repeatably absent once
+           the editor pane is widened via the resize handle. Rather than
+           continuing to chase the underlying Edge-specific rendering
+           cause (still not identified despite extensive attempts, see
+           the forceScrollResync/forceLayoutReflow/ResizeObserver fixes
+           further down, none of which fully resolved it on their own),
+           this sidesteps the problem directly by starting at a width
+           Andy has already confirmed avoids it, rather than a narrower
+           one known to trigger it. Still fully user-resizable via the
+           v-handle afterward, same as before — this only changes where
+           it STARTS. -->
       <div class="pane-lbl" id="editorPaneLbl">random_challenge_04.py</div>
       <div class="editor-area">
         <div class="line-nums" id="lineNums">1</div>
@@ -730,10 +745,35 @@ function applyFontSize() {
 }
 
 codeTa.addEventListener("input", function () { updateLineNums(); updateHighlight(); saveCode(); });
+
+/* FIX: continuation of the forceLayoutReflow() fix further below (same
+   root report from Andy — Edge-specific misalignment, still not
+   reproducible directly in Chromium despite extensive attempts). Andy's
+   follow-up screenshot showed a new, more specific symptom worth
+   addressing on its own: doing Ctrl/Cmd+A (select all) then scrolling
+   shows what he describes as "ghost" or duplicate text — the browser's
+   native text-selection highlight (rendered by codeTa itself) appearing
+   at a different vertical position than the syntax-highlighted text
+   (rendered by hlOverlay), as if two overlapping copies exist. Browsers
+   often composite an active text selection through a different internal
+   rendering path than plain text, which is a plausible reason this
+   specific combination (an active selection, THEN scrolling) could
+   surface a stale, partially-repainted frame that plain scrolling alone
+   wouldn't. The scroll listener below already correctly syncs scrollTop
+   on every scroll event; what it's missing is any guarantee that the
+   browser actually COMMITS that new position to screen before the next
+   paint, rather than potentially compositing an old frame alongside the
+   new one. Forcing a synchronous reflow (reading offsetHeight — the same
+   established technique as forceLayoutReflow() itself) on hlOverlay and
+   lineNums immediately after each scroll addresses that gap directly,
+   without needing to reproduce the exact Edge-specific compositing
+   quirk that causes it. */
 codeTa.addEventListener("scroll", function () {
   lineNums.scrollTop = codeTa.scrollTop;
   hlOverlay.scrollTop = codeTa.scrollTop;
   hlOverlay.scrollLeft = codeTa.scrollLeft;
+  void hlOverlay.offsetHeight;
+  void lineNums.offsetHeight;
 });
 
 /* ── Editor keyboard behaviour: Tab / auto-indent / dedent / run ── */
@@ -1315,7 +1355,21 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("mousemove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.clientX - startX)), totalW - 80);
+    // FIX: minimum editor-pane width raised from 80px to 400px. Andy's
+    // own precise, repeated testing established that a narrow editor
+    // pane is specifically what triggers the gutter/overlay "ghosting"
+    // he found on Edge (present when narrowed via this exact handle,
+    // absent again once widened back) — not reproducible directly in
+    // Chromium despite trying his exact steps, in either order (select
+    // before scrolling, and scrolling before selecting). Since the
+    // underlying Edge-side cause still isn't identified, this keeps the
+    // pane out of the width range Andy actually observed triggering it,
+    // rather than only fixing the STARTING width (the flex:3 change
+    // elsewhere) while still letting a student drag right back into the
+    // same narrow, problematic range by hand. 400px is comfortably wider
+    // than the visibly narrow width shown in Andy's own screenshots of
+    // the bug, which is why it doesn't just track that boundary exactly.
+    var newW = Math.min(Math.max(400, startW + (e.clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   });
 
@@ -1337,7 +1391,9 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("touchmove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.touches[0].clientX - startX)), totalW - 80);
+    // Same 400px minimum as the mouse-drag handler above, for the same
+    // reason — keeps touch-dragging out of the same narrow range too.
+    var newW = Math.min(Math.max(400, startW + (e.touches[0].clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   }, { passive: true });
   document.addEventListener("touchend", function () {
@@ -1554,6 +1610,50 @@ window.addEventListener("load", function () {
     forceLayoutReflow();
   }, 250);
 });
+
+/* FIX: continuation of the two fixes directly above — Andy's follow-up
+   testing pinned down something neither of them actually covers. His own
+   precise sequence: ghosting present at the pane's initial width : ->
+   dragging the v-handle WIDER makes it correct : -> deselecting, dragging
+   the handle NARROWER again, then selecting text once more brings the
+   ghosting straight back. That's a genuinely different pattern from
+   "needs one reflow at load" — it tracks the pane's WIDTH at the moment
+   of drag, not just whether a reflow ever happened in the past. Confirmed
+   directly that a horizontal scrollbar appearing on codeTa at narrow
+   widths does NOT change its clientHeight relative to hlOverlay in
+   Chromium (both stayed identical, 709px, even with genuine horizontal
+   overflow present) — so that specific mechanism isn't it, at least on
+   this engine, but the width-correlation itself is Andy's own directly
+   observed, repeated finding and worth building around regardless of
+   whether the exact Edge-side cause is identified.
+
+   forceLayoutReflow() above only runs a fixed few times right after load
+   — if the pane's width at THAT moment doesn't trigger the bug but a
+   LATER width (after the student drags the handle themselves) does, load-
+   time reflows can't help, since they've already finished by the time the
+   problematic width is ever reached. A ResizeObserver watching the pane's
+   actual size continuously closes that gap: every genuine width change,
+   whenever and for whatever reason it happens (dragging the handle,
+   the auto-resize postMessage changing the iframe's own size, anything
+   else), immediately re-runs both fixes at the NEW width, rather than
+   only ever running once, early, at whatever width happened to be
+   current back at page load. */
+if (window.ResizeObserver) {
+  // GUARD: forceLayoutReflow() itself sets editorPane's own width, which
+  // would otherwise re-trigger this very observer — comparing against the
+  // last width actually seen (rounded, to absorb harmless sub-pixel
+  // measurement noise) before doing anything is what stops that from
+  // looping forever, not just "hoping" a resize triggered by our own fix
+  // doesn't get observed.
+  var lastObservedWidth = Math.round(editorPane.getBoundingClientRect().width);
+  new ResizeObserver(function () {
+    var w = Math.round(editorPane.getBoundingClientRect().width);
+    if (w === lastObservedWidth) return;
+    lastObservedWidth = w;
+    forceScrollResync();
+    forceLayoutReflow();
+  }).observe(editorPane);
+}
 </script>
 </body>
 </html>
