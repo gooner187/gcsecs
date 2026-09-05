@@ -1374,7 +1374,21 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("mousemove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.clientX - startX)), totalW - 80);
+    // FIX: minimum editor-pane width raised from 80px to 400px. Andy's
+    // own precise, repeated testing established that a narrow editor
+    // pane is specifically what triggers the gutter/overlay "ghosting"
+    // he found on Edge (present when narrowed via this exact handle,
+    // absent again once widened back) — not reproducible directly in
+    // Chromium despite trying his exact steps, in either order (select
+    // before scrolling, and scrolling before selecting). Since the
+    // underlying Edge-side cause still isn't identified, this keeps the
+    // pane out of the width range Andy actually observed triggering it,
+    // rather than only fixing the STARTING width (the flex:3 change
+    // elsewhere) while still letting a student drag right back into the
+    // same narrow, problematic range by hand. 400px is comfortably wider
+    // than the visibly narrow width shown in Andy's own screenshots of
+    // the bug, which is why it doesn't just track that boundary exactly.
+    var newW = Math.min(Math.max(400, startW + (e.clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   });
 
@@ -1396,7 +1410,9 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("touchmove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.touches[0].clientX - startX)), totalW - 80);
+    // Same 400px minimum as the mouse-drag handler above, for the same
+    // reason — keeps touch-dragging out of the same narrow range too.
+    var newW = Math.min(Math.max(400, startW + (e.touches[0].clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   }, { passive: true });
   document.addEventListener("touchend", function () {
