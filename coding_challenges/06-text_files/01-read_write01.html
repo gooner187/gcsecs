@@ -72,7 +72,25 @@ body{
 }
 #widgetRoot:fullscreen .ce-body,
 #widgetRoot:-webkit-full-screen .ce-body,
-#widgetRoot.j277-fs-fallback .ce-body{ flex:1; min-height:0; }
+#widgetRoot.j277-fs-fallback .ce-body,
+#widgetRoot:fullscreen #txtEditorWrap,
+#widgetRoot:-webkit-full-screen #txtEditorWrap,
+#widgetRoot.j277-fs-fallback #txtEditorWrap{ flex:1; min-height:0; }
+/* FIX: #txtEditorWrap (the full-width text-file editor, shown instead
+   of .ce-body when a text-file tab like poem.txt is active) was
+   missing from this rule entirely — .ce-body already correctly grows
+   to fill the fullscreen viewport via flex:1, but the text-file editor
+   had no equivalent, so it just sat at its own natural/minimum height
+   with a large empty gap below it and the footer stranded partway down
+   the screen, confirmed directly with a screenshot. Reported by Andy as
+   "can't see the code again" after clicking a text-file tab in full
+   screen — the Python tab itself was still genuinely present and
+   clickable in testing, so the more likely explanation is this broken,
+   confusing layout (a poem occupying a sliver of the screen surrounded
+   by a huge empty white gap) made the tab bar easy to overlook, rather
+   than it being literally unreachable. Fixing the layout properly
+   removes the confusion either way, regardless of which explanation
+   was the actual cause on Andy's own device. */
 /* Square off the chrome's corners in fullscreen — rounded corners look
    like a stray gap/inset right at the true screen edge. */
 #widgetRoot:fullscreen .topbar, #widgetRoot:-webkit-full-screen .topbar, #widgetRoot.j277-fs-fallback .topbar{ border-radius:0; }
@@ -1584,6 +1602,21 @@ function forceScrollResync() {
    went out — Andy confirmed the misalignment stopped happening. */
 function forceLayoutReflow() {
   var currentWidth = editorPane.getBoundingClientRect().width;
+  // GUARD: skip entirely when currentWidth is 0 (or otherwise not a real,
+  // rendered size) — genuinely found the hard way, not anticipated in
+  // advance: this file's own new poem.txt tab hides the whole .ce-body
+  // (editorPane's own parent) via display:none when a text-file tab is
+  // active, which makes editorPane's measured width become exactly 0.
+  // The ResizeObserver below sees that as a genuine width change and
+  // calls this function, which — without this guard — would then set
+  // editorPane.style.flex = "0 0 0px", PERMANENTLY locking it at zero
+  // width. Confirmed directly: switching to poem.txt and back left
+  // codeTa's own bounding box at just 20px wide, not its correct ~600+px,
+  // for exactly this reason. Every earlier challenge in this fleet only
+  // ever had the one .py tab, so .ce-body was never hidden this way —
+  // this interaction between an existing fix and a genuinely new feature
+  // (multi-tab files) had no way to surface until this file specifically.
+  if (currentWidth <= 0) return;
   editorPane.style.flex = "0 0 " + currentWidth + "px";
   void editorPane.offsetHeight; // forces synchronous layout recalculation
 }
