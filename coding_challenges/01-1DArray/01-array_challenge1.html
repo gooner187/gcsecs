@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Array Challenge 01 — J277 Code Editor</title>
+<title>2D Array Challenge 01 — J277 Code Editor</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
 <style>
@@ -240,7 +240,7 @@ body{
 
 <div class="wrap" id="widgetRoot">
   <div class="topbar">
-    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">Array Challenge 01</span></div>
+    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">2D Array Challenge 01</span></div>
     <div class="spacer"></div>
     <div class="font-row">
       <button id="fontDown" title="Smaller text">A-</button>
@@ -269,7 +269,7 @@ body{
 
   <div class="ce-body" id="ceBody">
     <div class="pane" id="editorPane" style="flex:1.35;">
-      <div class="pane-lbl" id="editorPaneLbl">array_challenge_01.py</div>
+      <div class="pane-lbl" id="editorPaneLbl">array2d_challenge_01.py</div>
       <div class="editor-area">
         <div class="line-nums" id="lineNums">1</div>
         <div class="hl-wrap">
@@ -330,8 +330,8 @@ var PAGE_ID = (function () {
    the rest of the file for "Challenge 1" / "array_challenge_1"
    by hand, it's no longer hardcoded anywhere else.
    ============================================================ */
-var CHALLENGE_TITLE = "Array Challenge 01";        // shown in the tab title + topbar heading
-var CHALLENGE_FILENAME = "array_challenge_01";     // used for the .py filename everywhere (no extension)
+var CHALLENGE_TITLE = "2D Array Challenge 01";        // shown in the tab title + topbar heading
+var CHALLENGE_FILENAME = "array2d_challenge_01";     // used for the .py filename everywhere (no extension)
 
 document.title = CHALLENGE_TITLE + " — J277 Code Editor";
 document.getElementById("challengeTitleEl").textContent = CHALLENGE_TITLE;
@@ -356,36 +356,49 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Array Challenge 01 — content supplied directly in chat, from a
-   larger "1D-array challenges.py" file Andy uploaded containing 10
-   separate challenges — this is specifically challenge 01, rebuilt
-   from scratch with every current fix applied (this replaces the
-   very old, pre-fix Array Challenge series still missing the JSPI
-   input fix, infinite-loop scanner, gutter fix, pass-statement fix,
-   line-translation fix, and the newer Trinket-matched font/colour
-   palette — see fixes-audit.md).
+   2D Array Challenge 01 — content supplied directly in chat, from
+   a NEW "2D-array challenges.py" file Andy uploaded (10 more
+   challenges, a follow-on series to the 1D array set) — this is
+   the first of those, built fresh from the current, fully-fixed
+   base rather than migrated from an old file, since this is a new
+   series. Note: this challenge appeared TWICE, identically, in the
+   uploaded file — built from the first occurrence only, per Andy's
+   own request for "the first" challenge.
 
-   A genuine "spot the bug" exercise, not a working demo — verified
-   precisely with real Python: print(hag) raises NameError: name
-   'hag' is not defined, since the list itself is correctly named
-   "bag" — a one-character typo, not a deeper logic issue. Confirmed
-   the intended fix (hag -> bag) correctly prints the whole list.
-
-   Preserved exactly as pasted, including the task's own description
-   of this as a "syntax error" (informally correct in the sense
-   students would use the term, even though this is technically a
-   NameError, not a SyntaxError, in Python's own strict terminology
-   — not corrected, since that's how the task itself is phrased) and
-   the blank line after the four comment lines, before "bag = [...]".
+   A genuinely subtle bug, verified precisely with real Python —
+   NOT a SyntaxError, despite the task's own framing ("Fix any
+   syntax errors"). The missing comma after
+   "[2, "Burger", "chips", "drink"]" doesn't produce invalid syntax
+   at all: Python instead reads the following "[3, ...]" as an
+   INDEXING operation applied to that list (list[index], not a
+   second list item), and since the "index" itself contains commas,
+   it's parsed as a tuple index — confirmed this produces
+   TypeError: list indices must be integers or slices, not tuple.
+   Python's own SyntaxWarning even hints at the fix directly:
+   "perhaps you missed a comma?" Separately, "Garlic bread" "drink"
+   (no comma) is genuine implicit string concatenation — two
+   adjacent string literals silently become ONE string with no
+   space between them ("Garlic breaddrink"), confirmed with a real
+   Python run, not a crash at all — a different, more DANGEROUS kind
+   of bug, since it fails silently rather than raising anything.
+   Confirmed the fully corrected version (comma added after row 2,
+   comma added between "Garlic bread" and "drink", "primt"->"print",
+   "memu"->"menu") correctly prints the complete, valid menu list.
    ============================================================ */
 var STARTER_CODE =
-"#Arrays challenge 01 (gcsecs.com)\n" +
-"#Fix the syntax error\n" +
-"#The code should print all..\n" +
-"#..of the items in the array\n" +
+"#2D array challenges01 (gcsecs)\n" +
+"#Below is a badly coded 2D array\n" +
+"#Fix any syntax errors\n" +
+"#Fix any indentation errors\n" +
+"#Fix the code to display the array\n" +
 "\n" +
-"bag = [\"keys\", \"Money\", \"Pen\"]\n" +
-"print(hag)\n";
+"menu =  [\n" +
+"        [1, \"Kebab\", \"salad\", \"drink\"],\n" +
+"[2, \"Burger\", \"chips\", \"drink\"]\n" +
+"        [3, \"Pizza\", \"Garlic bread\" \"drink\"],\n" +
+"        ]\n" +
+"\n" +
+"primt(memu)\n";
 
 /* ============================================================
    FILE TABS — the main Python file + any added text files.
@@ -1411,5 +1424,6 @@ applyFontSize();
 updateLineNums();
 updateHighlight();
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
