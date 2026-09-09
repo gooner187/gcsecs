@@ -389,21 +389,18 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 02 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenge
-   01. Same poem.txt requirement as Challenge 01, reusing the identical
-   4-line poem for consistency across the series (both reference
-   "poem.txt" without specifying different content, so it reads as the
-   same file throughout). Genuinely worth flagging: verified precisely
-   with real Python that the poem actually displays CORRECTLY before
-   the error even happens — print(holder.read()) runs and succeeds
-   first, and only the file-closing step afterward fails, confirmed
-   AttributeError: '_io.TextIOWrapper' object has no attribute
-   'cllose' ("close" with an extra "l"). A student would see both the
-   correct poem output AND an error together, a genuinely different
-   situation from most earlier challenges where the error blocks any
-   output at all. Confirmed the fix (cllose -> close) runs completely
-   cleanly, no error at all afterward.
+   Read/Write Challenge 02 — content supplied directly in chat, from
+   the same rebuild as Challenge 01 (see that file's own comment for
+   the full context on why this series is being rebuilt). Genuinely
+   interesting error placement, confirmed with real Python: the poem
+   actually displays successfully first (holder.read() works fine),
+   and only THEN does "cllose" (should be "close") fail with
+   AttributeError — the bug doesn't block the main task at all, it
+   just breaks the cleanup step afterward. Confirmed the fix runs
+   cleanly end to end.
+
+   Preserved exactly as pasted, including a genuine trailing "#" at
+   the end of "a poem#" — confirmed directly with cat -A.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 02 (GCSECS.com)\n" +
@@ -1276,10 +1273,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1675,5 +1689,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
