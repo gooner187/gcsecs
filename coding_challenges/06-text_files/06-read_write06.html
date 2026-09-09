@@ -389,30 +389,32 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 06 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenges
-   01-05. Same poem.txt as Challenges 01-03/05. Genuinely the densest
-   challenge in this series — four distinct issues, each verified
-   individually with real Python by fixing one at a time, confirming
-   which error surfaced next rather than assuming top-to-bottom:
-   1) "loop.close(}" has a mismatched bracket on the very LAST line —
-      confirmed this reports FIRST, before any earlier line's own
-      issues, same pattern seen throughout this fleet (a SyntaxError
-      anywhere in the file is always caught before any runtime error,
-      regardless of which line it's actually on).
-   2) "input(\"poem.txt\", \"r\")" is the wrong function entirely —
-      should be open(), not input() — confirmed TypeError: input
-      expected at most 1 argument, got 2, since input() only ever
-      takes a single prompt string.
-   3) "readliine()" (should be "readline") — confirmed AttributeError.
-   4) "loop.close()" closes the wrong variable — loop is a boolean
-      (True/False), not the file handle, confirmed AttributeError:
-      'bool' object has no attribute 'close'; should be
-      holdPoem.close(). Verified the loop itself already works
-      completely correctly before this — all 4 lines of the poem
-      display in order, one at a time.
-   Confirmed the fully corrected version runs completely cleanly,
-   displaying the whole poem one line at a time via the while loop.
+   Read/Write Challenge 06 — content supplied directly in chat, from
+   the same rebuild as Challenges 01-05 (see Challenge 01's own
+   comment for the full context on why this series is being
+   rebuilt). Genuinely the densest challenge in this series — four
+   distinct issues, each verified individually with real Python by
+   fixing one at a time:
+   1) "loop.close(}" — a genuinely mismatched bracket, confirmed as
+      the first error even though it's on the last line.
+   2) "input(\"poem.txt\", \"r\")" (should be "open") — confirmed
+      TypeError: input() genuinely only accepts at most 1 argument
+      (an optional prompt), not a filename and mode at all.
+   3) "readliine" (should be "readline") — confirmed AttributeError.
+   4) Genuinely the wrong variable, not a typo: "loop.close()" tries
+      to close the boolean "loop" (which is False by the time this
+      line runs), not the file itself — confirmed AttributeError:
+      'bool' object has no attribute 'close'. Should be
+      "holdPoem.close()".
+   Confirmed the fully corrected version runs cleanly, displaying all
+   four lines of the poem one at a time via the loop, then closing
+   the file correctly.
+
+   Preserved exactly as pasted, including "if meant to" (likely a
+   typo for "is meant to") in the task comment itself, the unusual
+   2-space loop-body indentation (most challenges in this fleet use
+   4), and a genuine trailing-space blank line before the final
+   close() call — confirmed directly with cat -A.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 06 (GCSECS.com)\n" +
@@ -440,13 +442,12 @@ var STARTER_CODE =
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
 // FIX: pre-populated with a second, "poem.txt" tab alongside the usual
-// solo .py tab — back to poem.txt (same shared poem as Challenges
-// 01-03), since this challenge's own task references the poem again,
-// not readThis.txt from Challenge 04's own write-based task. Uses the
-// SAME file-tabs mechanism already in place for student-added text
-// files (written into Pyodide's virtual FS before each run, same as
-// any file a student adds via the "+" button) rather than a new,
-// separate mechanism.
+// solo .py tab — the task's own instruction ("run the code") requires
+// poem.txt to actually exist for anything meaningful to happen at all.
+// Uses the SAME file-tabs mechanism already in place for student-added
+// text files (written into Pyodide's virtual FS before each run)
+// rather than a new mechanism — same 4-line poem used in Challenges
+// 01-03 and 06, for consistency across the series.
 var tabs = [
   { id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" },
   { id: "poem", type: "txt", label: "poem.txt", content: "Roses are red\nViolets are blue\nPython is fun\nAnd so are you\n" }
@@ -1294,10 +1295,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1693,5 +1711,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
