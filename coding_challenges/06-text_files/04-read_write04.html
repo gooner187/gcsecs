@@ -389,29 +389,25 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 04 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenges
-   01-03. A genuinely different shape from every earlier challenge in
-   this series — WRITING, not reading, and requiring a second file,
-   "readThis.txt", which the task explicitly describes as starting
-   EMPTY (pre-loaded as an empty text-file tab below, matching that
-   description exactly, rather than pre-populated with any content).
-   Two distinct issues, verified individually with real Python by
-   fixing one at a time:
-   1) "notepad.close)" is missing its OPENING parenthesis — confirmed
-      SyntaxError: unmatched ')', the first error Python's parser
-      reports, same compile-before-runtime pattern seen throughout
-      this fleet — ahead of the variable-name issue below despite
-      sitting on the LAST line of the file.
-   2) "notepad.write(usercontent)" references "usercontent" (lowercase
-      c), but the actual variable defined two lines above is
-      "userContent" (capital C) — a genuine case-sensitivity mismatch,
-      confirmed NameError: name 'usercontent' is not defined.
-   Confirmed the fully corrected version end-to-end: typing "Hello
-   world" at the prompt, then separately re-reading readThis.txt back
-   from disk afterward, confirmed it now genuinely contains "Hello
-   world" — not just that the code ran without error, but that the
-   write itself actually took effect.
+   Read/Write Challenge 04 — content supplied directly in chat, from
+   the same rebuild as Challenges 01-03 (see Challenge 01's own
+   comment for the full context on why this series is being
+   rebuilt). Two issues, verified individually with real Python:
+   1) "notepad.close)" — a genuine mismatched parenthesis (missing
+      the opening one) — confirmed SyntaxError: unmatched ')'.
+   2) Genuinely a case-mismatch, not a typo in the usual sense: the
+      variable is DEFINED as "userContent" (camelCase), but USED as
+      "usercontent" (all lowercase) — Python is case-sensitive, so
+      these are two different names. Confirmed NameError once the
+      bracket is fixed. Confirmed the fully corrected version
+      actually writes the entered content into readThis.txt (checked
+      the file's own contents afterward, not just that it ran without
+      error).
+
+   Preserved exactly as pasted, including a genuine inconsistency in
+   the comments themselves — "readthis.txt" (lowercase) on one line,
+   "readThis.txt" (camelCase) on another — confirmed directly with
+   cat -A, not normalised to match.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 04 (GCSECS.com)\n" +
@@ -435,14 +431,12 @@ var STARTER_CODE =
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
 // FIX: pre-populated with a second, "readThis.txt" tab alongside the
-// usual solo .py tab — this challenge's own task explicitly describes
-// readThis.txt as starting EMPTY (unlike poem.txt in Challenges 01-03,
-// which needed real content pre-loaded), so it's added with empty
-// content rather than any placeholder text, matching the task's own
-// description exactly. Uses the SAME file-tabs mechanism already in
-// place for student-added text files (written into Pyodide's virtual
-// FS before each run, same as any file a student adds via the "+"
-// button) rather than a new, separate mechanism.
+// usual solo .py tab — the task's own comment explicitly points the
+// student at it ("Next to it is readthis.txt... Click between them -
+// readThis.txt is empty"), so it needs to genuinely exist, empty, for
+// that instruction to make sense. Uses the SAME file-tabs mechanism
+// already in place for student-added text files (written into
+// Pyodide's virtual FS before each run) rather than a new mechanism.
 var tabs = [
   { id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" },
   { id: "readthis", type: "txt", label: "readThis.txt", content: "" }
@@ -1290,10 +1284,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1689,5 +1700,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
