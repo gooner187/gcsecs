@@ -389,20 +389,17 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 05 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenges
-   01-04. Back to poem.txt (same shared poem as Challenges 01-03, not
-   readThis.txt from Challenge 04's own write-based task). Genuinely
-   working code, no bugs — an "observe then modify" task, matching the
-   task's own instruction to "run the code" first. Verified precisely
-   with real Python: as given, correctly demonstrates readline() vs
-   readlines() exactly as the task describes — two individual
-   readline() calls each return one line at a time ("Roses are red",
-   "Violets are blue"), then readlines() returns everything REMAINING
-   as a list (since the file's own read position has already advanced
-   past the first two lines) — ['Python is fun\n', 'And so are you\n'].
-   Confirmed the intended modification (removing the readlines() call
-   entirely) correctly leaves only the first two lines displayed.
+   Read/Write Challenge 05 — content supplied directly in chat, from
+   the same rebuild as Challenges 01-04 (see Challenge 01's own
+   comment for the full context on why this series is being
+   rebuilt). Genuinely working code as given, matching the task's own
+   "run the code" instruction — verified with real Python: the two
+   readline() calls each show one line, then readlines() shows the
+   remaining two lines together as a list, clearly demonstrating the
+   difference the task asks the student to observe. Confirmed the
+   intended edit (removing the readlines() call entirely) correctly
+   leaves only the first two lines displayed, matching the task's
+   second goal exactly.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 05 (GCSECS.com)\n" +
@@ -426,13 +423,12 @@ var STARTER_CODE =
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
 // FIX: pre-populated with a second, "poem.txt" tab alongside the usual
-// solo .py tab — back to poem.txt (same shared poem as Challenges
-// 01-03), since this challenge's own task references the poem again,
-// not readThis.txt from Challenge 04's own write-based task. Uses the
-// SAME file-tabs mechanism already in place for student-added text
-// files (written into Pyodide's virtual FS before each run, same as
-// any file a student adds via the "+" button) rather than a new,
-// separate mechanism.
+// solo .py tab — the task's own instruction ("run the code") requires
+// poem.txt to actually exist for anything meaningful to happen at all.
+// Uses the SAME file-tabs mechanism already in place for student-added
+// text files (written into Pyodide's virtual FS before each run)
+// rather than a new mechanism — same 4-line poem used in Challenges
+// 01-03 and 06, for consistency across the series.
 var tabs = [
   { id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" },
   { id: "poem", type: "txt", label: "poem.txt", content: "Roses are red\nViolets are blue\nPython is fun\nAnd so are you\n" }
@@ -1280,10 +1276,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1679,5 +1692,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
