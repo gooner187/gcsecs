@@ -389,21 +389,17 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 07 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenges
-   01-06. Back to readThis.txt (same empty file as Challenge 04's own
-   write-based task, not poem.txt). Genuinely different from every
-   bug-fix challenge so far — this is INCOMPLETE code, not buggy code:
-   it opens the file and gets user input, but never actually calls
-   .write() or .close() at all, matching the task's own framing exactly
-   ("Run the two lines of code below... the file is empty. Can you fix
-   the code so that the file stores the input?"). Verified precisely
-   with real Python: runs completely cleanly as given (no error at
-   all), and confirmed the file genuinely stays empty afterward — not
-   just that nothing crashes, but that the described symptom (an empty
-   file) is real. Confirmed the completed version (adding .write() and
-   .close()) correctly results in readThis.txt actually containing
-   whatever the user typed.
+   Read/Write Challenge 07 — content supplied directly in chat, from
+   the same rebuild as Challenges 01-06 (see Challenge 01's own
+   comment for the full context on why this series is being
+   rebuilt). Genuinely INCOMPLETE code, not buggy code, matching my
+   own earlier session notes — verified with real Python: the given
+   two lines run completely cleanly, no error at all, but the file
+   stays entirely empty since .write() and .close() are never called
+   at all. Confirmed adding both lines (notepad.write(userContent),
+   notepad.close()) correctly writes the entered content into the
+   file — checked the file's own contents afterward, not just that
+   it ran without error.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 07 (GCSECS.com)\n" +
@@ -426,13 +422,13 @@ var STARTER_CODE =
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
 // FIX: pre-populated with a second, "readThis.txt" tab alongside the
-// usual solo .py tab — back to readThis.txt (same empty file as
-// Challenge 04's own write-based task), since this challenge's task
-// explicitly describes the file as starting empty ("click it, the
-// file is empty"), not poem.txt. Uses the SAME file-tabs mechanism
-// already in place for student-added text files (written into
-// Pyodide's virtual FS before each run, same as any file a student
-// adds via the "+" button) rather than a new, separate mechanism.
+// usual solo .py tab, same as Challenge 04. Genuinely at odds with
+// the task's own narrative, which describes it as not existing yet
+// ("there is nothing next to main.py") — but the widget has no
+// mechanism to dynamically create a new tab mid-run based on a file
+// being opened, so pre-populating it empty, as the original build
+// already did, is the closest available match: it stays visibly
+// empty until the student's own fix actually writes to it.
 var tabs = [
   { id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" },
   { id: "readthis", type: "txt", label: "readThis.txt", content: "" }
@@ -1280,10 +1276,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1679,5 +1692,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
