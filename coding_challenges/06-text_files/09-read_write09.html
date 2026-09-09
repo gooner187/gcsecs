@@ -389,18 +389,19 @@ document.getElementById("editorPaneLbl").textContent = CHALLENGE_FILENAME + ".py
 /* ============================================================
    STARTER CODE
    ------------------------------------------------------------
-   Read/Write Challenge 09 — content supplied directly in chat, from the
-   same NEW "ReadWrite to files challenges 1-10.py" file as Challenges
-   01-08. Comments-only, open-ended — a complete write-then-read
-   program, built entirely from scratch (not referencing any pre-
-   existing file like poem.txt/readThis.txt, so no file tab needed
-   here). Verified with a real Python run: comments-only, runs cleanly
-   with no output/error, same "No output." fallback behaviour as the
-   other comments-only challenges in this fleet.
+   Read/Write Challenge 09 — content supplied directly in chat, from
+   the same rebuild as Challenges 01-08 (see Challenge 01's own
+   comment for the full context on why this series is being
+   rebuilt). Comments-only, open-ended — a build task: open a file,
+   let the user type text, write it, close the file, then let the
+   user see the file's contents. Verified with a real Python run:
+   comments-only, runs cleanly with no output/error, same "No
+   output." fallback behaviour as the other comments-only challenges
+   in this fleet.
 
-   Preserved exactly as pasted, including "Cloes" — reads as a likely
-   typo for "Closes" (missing the "s" and with "l"/"o" swapped), not
-   corrected per usual practice.
+   Preserved exactly as pasted, including "Cloes" — reads as a
+   likely typo for "Closes", missing an "s" — not corrected per usual
+   practice.
    ============================================================ */
 var STARTER_CODE =
 "#Read/Write to files challenge 09 (GCSECS.com)\n" +
@@ -416,11 +417,8 @@ var STARTER_CODE =
    each run, so student code can do e.g. open("data.txt").
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
-// FIX: no second file tab this time — genuinely different from every
-// earlier challenge in this series. "writelines_example.txt" is opened
-// in "w" (write) mode, which creates the file fresh on every run rather
-// than needing to already exist, so there's nothing to pre-load here.
-// Back to just the single main .py tab.
+// FIX: no second file tab — comments-only, open-ended build task, so
+// there's no specific filename to pre-load a tab for.
 var tabs = [{ id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" }];
 var activeTabId = "main";
 var tabIdCounter = 0;
@@ -1681,5 +1679,6 @@ if (window.ResizeObserver) {
   }).observe(editorPane);
 }
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
