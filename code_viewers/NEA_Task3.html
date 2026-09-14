@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NEA Task 3 — J277 Output Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
+<style>
+/* ============================================================
+   THEME — dark is default, light toggled via body.j277-light
+   (Identical to the J277 Code Editor's theme system — kept in
+   sync deliberately, same CSS vars, same fixes for the outer-
+   frame/border issues worked out there.)
+   ============================================================ */
+:root{
+  --bg:#0d0f14; --surface:#151820; --surface2:#1c2030; --border:#2a2f42;
+  --accent:#4f8ef7; --success:#3ecf8e; --error:#f06353; --warn:#f0997b;
+  --text:#e8eaf0; --text-muted:#7a8099;
+  --outer-border:transparent;
+}
+body.j277-light{
+  --bg:#ffffff; --surface:#ffffff; --surface2:#eef0f5; --border:#d7dbe4;
+  --accent:#2563eb; --success:#1a9c66; --error:#d1453b; --warn:#c5651f;
+  --text:#1b1f2a; --text-muted:#6b7280;
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+/* NOTE: deliberately no html/body rules here — this file may end up pasted
+   directly into a host CMS's "embed code" block rather than loaded via
+   <iframe>, which would leak html/body selectors onto the HOST page's
+   real <html>/<body>. Every rule below is scoped to #widgetRoot instead. */
+body{
+  /* Deliberately NOT var(--bg) — see the Code Editor's own notes on this
+     exact mistake. Fixed white matches the actual host page regardless
+     of which theme is active, avoiding a visible dark/grey frame. */
+  background:#ffffff; color:var(--text); font-family:'DM Sans',sans-serif;
+  transition:background .15s,color .15s;
+}
+.wrap{ max-width:900px; margin:0 auto; padding:14px; }
+
+/* ── Full screen mode ───────────────────────────────────── */
+#widgetRoot:fullscreen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:-webkit-full-screen{
+  max-width:none; width:100vw; height:100vh; margin:0; padding:0;
+  display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot.j277-fs-fallback{
+  position:fixed; inset:0; z-index:9999; max-width:none; width:100vw; height:100vh;
+  margin:0; padding:0; display:flex; flex-direction:column; background:var(--bg);
+}
+#widgetRoot:fullscreen .out-pane,
+#widgetRoot:-webkit-full-screen .out-pane,
+#widgetRoot.j277-fs-fallback .out-pane{ flex:1; min-height:0; }
+#widgetRoot:fullscreen .topbar, #widgetRoot:-webkit-full-screen .topbar, #widgetRoot.j277-fs-fallback .topbar{ border-radius:0; }
+#widgetRoot:fullscreen .ce-footer, #widgetRoot:-webkit-full-screen .ce-footer, #widgetRoot.j277-fs-fallback .ce-footer{ border-radius:0; }
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.topbar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface2); border:0.5px solid var(--border); border-radius:10px 10px 0 0;
+  padding:8px 10px;
+  border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.title{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; font-weight:700; color:var(--text);
+  display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.title i{ color:var(--accent); font-size:15px; }
+.spacer{ flex:1; }
+.icon-btn{
+  display:inline-flex; align-items:center; gap:4px; border:0.5px solid var(--border);
+  border-radius:6px; padding:4px 9px; font-size:11px; color:var(--text-muted);
+  background:var(--surface); cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.icon-btn:hover{ color:var(--text); border-color:var(--accent); }
+.icon-btn i{ font-size:13px; }
+.run-btn{
+  background:rgba(79,142,247,0.12); border-color:var(--accent); color:var(--accent); font-weight:600;
+}
+.font-row{ display:flex; align-items:center; gap:2px; border:0.5px solid var(--border); border-radius:6px; padding:2px 6px; }
+.font-row span{ font-size:11px; color:var(--text-muted); min-width:26px; text-align:center; }
+.font-row button{ border:none; background:none; font-size:13px; color:var(--text-muted); cursor:pointer; padding:0 3px; }
+.font-row button:hover{ color:var(--text); }
+
+/* ── Output area (full width — no editor pane in this widget) ── */
+.out-pane{
+  border:0.5px solid var(--border); border-top:none; background:var(--surface2);
+  display:flex; flex-direction:column; min-height:280px;
+  border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.pane-lbl{
+  font-size:9px; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
+}
+.output{
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  background:var(--surface2); flex:1; overflow:auto; white-space:pre-wrap; color:var(--text);
+}
+.out-ok{ color:var(--success); }
+.out-err{ color:var(--error); }
+.out-muted{ color:var(--text-muted); }
+
+/* ── Footer status bar ──────────────────────────────────── */
+.ce-footer{
+  padding:6px 10px; border:0.5px solid var(--border); border-top:none; border-radius:0 0 10px 10px;
+  display:flex; align-items:center; justify-content:space-between; background:var(--surface2);
+  border-bottom-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
+}
+.footer-left{ display:flex; align-items:center; gap:6px; }
+.dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
+.dot-err{ background:var(--error); }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+
+/* Infinite-loop / warning panel (identical to the Code Editor's) */
+.warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
+.warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
+.warn-btn{
+  display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
+  font-weight:600; border:0.5px solid var(--warn); background:rgba(240,153,123,0.15); color:var(--warn);
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+}
+.warn-btn-plain{
+  border:0.5px solid var(--border); background:var(--surface); color:var(--text-muted); font-weight:400;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="widgetRoot">
+  <div class="topbar">
+    <div class="title"><i class="ti ti-player-play" aria-hidden="true"></i><span id="taskTitleEl">NEA Task 3</span></div>
+    <div class="spacer"></div>
+    <div class="font-row">
+      <button id="fontDown" title="Smaller text">A-</button>
+      <span id="fontSizeLbl">12px</span>
+      <button id="fontUp" title="Larger text">A+</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" title="Toggle light/dark mode">
+      <i class="ti ti-moon" aria-hidden="true" id="themeIcon"></i><span id="themeLbl">Dark</span>
+    </button>
+    <button class="icon-btn" id="fsBtn" title="Full screen">
+      <i class="ti ti-maximize" aria-hidden="true" id="fsIcon"></i><span id="fsLbl">Full screen</span>
+    </button>
+    <button class="icon-btn run-btn" id="runBtn" title="Run">
+      <i class="ti ti-player-play" aria-hidden="true"></i>Run
+    </button>
+  </div>
+
+  <div class="out-pane" id="outputPane">
+    <div class="pane-lbl">Output</div>
+    <div class="output" id="output"><div class="out-muted">Click Run to see what this program does.</div></div>
+  </div>
+
+  <div class="ce-footer">
+    <div class="footer-left">
+      <div class="dot" id="statusDot"></div>
+      <span class="footer-txt" id="statusTxt">Python 3.12 · Pyodide · ready</span>
+    </div>
+    <span class="hint">No code shown — this is a demo of the finished program</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   PAGE ID — used to namespace this demo's localStorage (theme
+   preference only — there's no student-typed code to save in
+   this widget). Same automatic-from-URL approach as the Code
+   Editor, for the same reason: nothing to remember to edit.
+   ============================================================ */
+var PAGE_ID = (function () {
+  try {
+    var path = window.location.pathname || "default";
+    return path.replace(/[^a-zA-Z0-9_-]/g, "_") || "default";
+  } catch (e) { return "default"; }
+})();
+
+/* ============================================================
+   TASK IDENTITY — the one thing to change when duplicating this
+   file for the next task demo (Task 2, Task 3, ...).
+   ============================================================ */
+var TASK_TITLE = "NEA Task 3";        // shown in the tab title + topbar heading
+
+document.title = TASK_TITLE + " — J277 Output Viewer";
+document.getElementById("taskTitleEl").textContent = TASK_TITLE;
+
+/* ============================================================
+   HIDDEN DEMO SOURCE
+   ------------------------------------------------------------
+   Real Task 3 content — written from scratch in chat against the
+   actual NEA specification Andy pasted (not existing code to
+   verify, unlike every other viewer in this fleet). A fixture
+   manager reading two real data files: firesideFixtures.txt (190
+   rows) and firesideResults.txt (20 rows), both supplied via
+   DEMO_FILES below rather than embedded in this source, matching
+   how the Code Editor's own text-file tabs work.
+
+   Option A (search) is fully specified in the task text and
+   implemented exactly, including the deliberate detail that
+   Fixture Time is excluded from the display despite being part of
+   the file's own column structure. Options B (outstanding
+   fixtures) and C (leader board) were only named, not detailed, so
+   built on reasonable interpretations grounded directly in the
+   data's own structure: B shows the 69 fixtures with a blank
+   "Fixture Played" field (rows 122-190), C sorts all 20 results by
+   Matches Won, descending. Andy reviewed and accepted this design
+   before it was built into a widget.
+
+   Verified end-to-end with a real local Python run against the
+   actual data, covering every path: a found, played fixture (1),
+   invalid non-numeric input followed by a found, unplayed fixture
+   (122, confirming the validation loop and blank-field display both
+   work), a genuinely not-found fixture (999), the full outstanding-
+   fixtures list (confirmed all 69, correctly filtered), the full
+   leader board (confirmed correctly sorted, Kes on 9 wins first,
+   Tyler on 0 last), an invalid menu choice, and quit.
+
+   Built on the fully-fixed code_viewer base (see NEA_Task1.html for
+   the full account of what was ported in and verified: analytics,
+   the ModuleNotFoundError/"(detected at line N)" error-translation
+   fixes, and the current monospace font).
+
+   Same code-hiding caveat as before: this is not visible in the
+   normal UI (no editor pane, no Save button), but a determined
+   visitor could still find it via browser DevTools — see chat
+   with Andy for the full tradeoff explanation.
+   ============================================================ */
+var DEMO_SOURCE =
+"def loadFixtures():\n" +
+"    fixtures = []\n" +
+"    file = open(\"firesideFixtures.txt\", \"r\")\n" +
+"    for line in file:\n" +
+"        line = line.strip()\n" +
+"        if line != \"\":\n" +
+"            parts = line.split(\",\")\n" +
+"            fixtures.append(parts)\n" +
+"    file.close()\n" +
+"    return fixtures\n" +
+"\n" +
+"def loadResults():\n" +
+"    results = []\n" +
+"    file = open(\"firesideResults.txt\", \"r\")\n" +
+"    for line in file:\n" +
+"        line = line.strip()\n" +
+"        if line != \"\":\n" +
+"            parts = line.split(\",\")\n" +
+"            results.append(parts)\n" +
+"    file.close()\n" +
+"    return results\n" +
+"\n" +
+"def searchFixture(fixtures):\n" +
+"    valid = False\n" +
+"    while not valid:\n" +
+"        fixtureNumber = input(\"Enter a fixture number: \")\n" +
+"        if fixtureNumber.isdigit():\n" +
+"            valid = True\n" +
+"        else:\n" +
+"            print(\"Invalid input, please enter a whole number\")\n" +
+"\n" +
+"    found = False\n" +
+"    for fixture in fixtures:\n" +
+"        if fixture[0] == fixtureNumber:\n" +
+"            found = True\n" +
+"            print(\"\")\n" +
+"            print(\"Fixture Number   Fixture Date   Player 1 Nickname   Player 2 Nickname   Fixture Played   Winning Nickname\")\n" +
+"            print(fixture[0], \"             \", fixture[1], \"    \", fixture[3], \"            \", fixture[4], \"        \", fixture[5], \"               \", fixture[6])\n" +
+"            break\n" +
+"\n" +
+"    if found == False:\n" +
+"        print(\"\")\n" +
+"        print(\"Fixture number not found, please try again\")\n" +
+"\n" +
+"def outstandingFixtures(fixtures):\n" +
+"    print(\"\")\n" +
+"    print(\"Outstanding Fixtures\")\n" +
+"    print(\"Fixture Number   Fixture Date   Player 1 Nickname   Player 2 Nickname\")\n" +
+"    for fixture in fixtures:\n" +
+"        if fixture[5] != \"Y\":\n" +
+"            print(fixture[0], \"  \", fixture[1], \"  \", fixture[3], \"  \", fixture[4])\n" +
+"\n" +
+"def leaderBoard(results):\n" +
+"    sortedResults = sorted(results, key=lambda x: int(x[2]), reverse=True)\n" +
+"    print(\"\")\n" +
+"    print(\"Leader Board\")\n" +
+"    print(\"Player Nickname   Matches Played   Matches Won   Matches Lost\")\n" +
+"    for r in sortedResults:\n" +
+"        print(r[0], \"  \", r[1], \"  \", r[2], \"  \", r[3])\n" +
+"\n" +
+"def displayMenu():\n" +
+"    print(\"\")\n" +
+"    print(\"Fixture Manager\")\n" +
+"    print(\"Option A - Search for a fixture\")\n" +
+"    print(\"Option B - Outstanding fixtures\")\n" +
+"    print(\"Option C - Display leader board\")\n" +
+"    print(\"Enter Q to quit\")\n" +
+"\n" +
+"def main():\n" +
+"    fixtures = loadFixtures()\n" +
+"    results = loadResults()\n" +
+"\n" +
+"    choice = \"\"\n" +
+"    while choice != \"Q\":\n" +
+"        displayMenu()\n" +
+"        choice = input(\"Enter your choice: \").upper()\n" +
+"        if choice == \"A\":\n" +
+"            searchFixture(fixtures)\n" +
+"        elif choice == \"B\":\n" +
+"            outstandingFixtures(fixtures)\n" +
+"        elif choice == \"C\":\n" +
+"            leaderBoard(results)\n" +
+"        elif choice == \"Q\":\n" +
+"            print(\"\")\n" +
+"            print(\"Goodbye\")\n" +
+"        else:\n" +
+"            print(\"\")\n" +
+"            print(\"Invalid choice, please try again\")\n" +
+"\n" +
+"main()\n";
+
+/* ============================================================
+   HIDDEN DEMO FILES
+   ------------------------------------------------------------
+   The exact scenario this mechanism's own comment anticipated:
+   Task 3's real fixtures/results files, from Andy's own pasted
+   Appendices A and B. Preserved exactly, including the genuine
+   curly right single quotation mark (U+2019) in "M'lady" — checked
+   directly against the source, not assumed from how it rendered.
+   Written into Pyodide's virtual filesystem before every run.
+   ============================================================ */
+var DEMO_FILES = {
+"firesideFixtures.txt":
+"1,02/09/15,18:00,RNGesus,Ingsoc,Y,Ingsoc\n" +
+"2,03/09/15,18:00,M’lady,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"3,04/09/15,18:00,Ripley,Billy Casper,Y,Billy Casper\n" +
+"4,05/09/15,18:00,Jenkins,Tyler,Y,Jenkins\n" +
+"5,06/09/15,18:00,Kes,Leeroy,Y,Leeroy\n" +
+"6,07/09/15,18:00,Magnitude,Space Pirate,Y,Magnitude\n" +
+"7,08/09/15,18:00,Big Boss,Esports,Y,Esports\n" +
+"8,09/09/15,18:00,Einstein100,Big Brother,Y,Big Brother\n" +
+"9,10/09/15,18:00,Macho Man,Game Dude,Y,Macho Man\n" +
+"10,11/09/15,18:00,Otacon,Dennis,Y,Otacon\n" +
+"11,12/09/15,18:00,Napoleon Wilson,Ingsoc,Y,Napoleon Wilson\n" +
+"12,13/09/15,18:00,Otacon,RNGesus,Y,Otacon\n" +
+"13,14/09/15,18:00,M’lady,Billy Casper,Y,Billy Casper\n" +
+"14,15/09/15,18:00,Ripley,Tyler,Y,Ripley\n" +
+"15,16/09/15,18:00,Jenkins,Leeroy,Y,Jenkins\n" +
+"16,17/09/15,18:00,Kes,Space Pirate,Y,Kes\n" +
+"17,18/09/15,18:00,Magnitude,Esports,Y,Esports\n" +
+"18,19/09/15,18:00,Big Boss,Big Brother,Y,Big Boss\n" +
+"19,20/09/15,18:00,Einstein100,Game Dude,Y,Game Dude\n" +
+"20,21/09/15,18:00,Macho Man,Dennis,Y,Dennis\n" +
+"21,22/09/15,18:00,Billy Casper,Ingsoc,Y,Ingsoc\n" +
+"22,23/09/15,18:00,Napoleon Wilson,RNGesus,Y,RNGesus\n" +
+"23,24/09/15,18:00,M’lady,Tyler,Y,M’lady\n" +
+"24,25/09/15,18:00,Ripley,Leeroy,Y,Ripley\n" +
+"25,26/09/15,18:00,Jenkins,Space Pirate,Y,Space Pirate\n" +
+"26,27/09/15,18:00,Kes,Esports,Y,Kes\n" +
+"27,28/09/15,18:00,Magnitude,Big Brother,Y,Magnitude\n" +
+"28,29/09/15,18:00,Big Boss,Game Dude,Y,Big Boss\n" +
+"29,30/09/15,18:00,Einstein100,Dennis,Y,Einstein100\n" +
+"30,01/10/15,18:00,Otacon,Macho Man,Y,Otacon\n" +
+"31,02/10/15,18:00,Tyler,Ingsoc,Y,Ingsoc\n" +
+"32,03/10/15,18:00,Billy Casper,RNGesus,Y,RNGesus\n" +
+"33,04/10/15,18:00,Otacon,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"34,05/10/15,18:00,M’lady,Leeroy,Y,Leeroy\n" +
+"35,06/10/15,18:00,Ripley,Space Pirate,Y,Space Pirate\n" +
+"36,07/10/15,18:00,Jenkins,Esports,Y,Jenkins\n" +
+"37,08/10/15,18:00,Kes,Big Brother,Y,Kes\n" +
+"38,09/10/15,18:00,Magnitude,Game Dude,Y,Magnitude\n" +
+"39,10/10/15,18:00,Big Boss,Dennis,Y,Big Boss\n" +
+"40,11/10/15,18:00,Einstein100,Macho Man,Y,Einstein100\n" +
+"41,12/10/15,18:00,Leeroy,Ingsoc,Y,Leeroy\n" +
+"42,13/10/15,18:00,Tyler,RNGesus,Y,RNGesus\n" +
+"43,14/10/15,18:00,Billy Casper,Napoleon Wilson,Y,Billy Casper\n" +
+"44,15/10/15,18:00,M’lady,Space Pirate,Y,Space Pirate\n" +
+"45,16/10/15,18:00,Ripley,Esports,Y,Ripley\n" +
+"46,17/10/15,18:00,Jenkins,Big Brother,Y,Jenkins\n" +
+"47,18/10/15,18:00,Kes,Game Dude,Y,Kes\n" +
+"48,19/10/15,18:00,Magnitude,Dennis,Y,Dennis\n" +
+"49,20/10/15,18:00,Big Boss,Macho Man,Y,Big Boss\n" +
+"50,21/10/15,18:00,Otacon,Einstein100,Y,Otacon\n" +
+"51,22/10/15,18:00,Space Pirate,Ingsoc,Y,Space Pirate\n" +
+"52,23/10/15,18:00,Leeroy,RNGesus,Y,Leeroy\n" +
+"53,24/10/15,18:00,Tyler,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"54,25/10/15,18:00,Otacon,Billy Casper,Y,Billy Casper\n" +
+"55,26/10/15,18:00,M’lady,Esports,Y,M’lady\n" +
+"56,27/10/15,18:00,Ripley,Big Brother,Y,Ripley\n" +
+"57,28/10/15,18:00,Jenkins,Game Dude,Y,Game Dude\n" +
+"58,29/10/15,18:00,Kes,Dennis,Y,Kes\n" +
+"59,30/10/15,18:00,Magnitude,Macho Man,Y,Macho Man\n" +
+"60,31/10/15,18:00,Big Boss,Einstein100,Y,Einstein100\n" +
+"61,01/11/15,18:00,Esports,Ingsoc,Y,Esports\n" +
+"62,02/11/15,18:00,Space Pirate,RNGesus,Y,RNGesus\n" +
+"63,03/11/15,18:00,Leeroy,Napoleon Wilson,Y,Leeroy\n" +
+"64,04/11/15,18:00,Tyler,Billy Casper,Y,Billy Casper\n" +
+"65,05/11/15,18:00,M’lady,Big Brother,Y,Big Brother\n" +
+"66,06/11/15,18:00,Ripley,Game Dude,Y,Game Dude\n" +
+"67,07/11/15,18:00,Jenkins,Dennis,Y,Jenkins\n" +
+"68,08/11/15,18:00,Kes,Macho Man,Y,Kes\n" +
+"69,09/11/15,18:00,Magnitude,Einstein100,Y,Einstein100\n" +
+"70,10/11/15,18:00,Otacon,Big Boss,Y,Otacon\n" +
+"71,11/11/15,18:00,Big Brother,Ingsoc,Y,Big Brother\n" +
+"72,12/11/15,18:00,Esports,RNGesus,Y,Esports\n" +
+"73,13/11/15,18:00,Space Pirate,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"74,14/11/15,18:00,Leeroy,Billy Casper,Y,Billy Casper\n" +
+"75,15/11/15,18:00,Otacon,Tyler,Y,Otacon\n" +
+"76,16/11/15,18:00,M’lady,Game Dude,Y,M’lady\n" +
+"77,17/11/15,18:00,Ripley,Dennis,Y,Dennis\n" +
+"78,18/11/15,18:00,Jenkins,Macho Man,Y,Jenkins\n" +
+"79,19/11/15,18:00,Kes,Einstein100,Y,Einstein100\n" +
+"80,20/11/15,18:00,Magnitude,Big Boss,Y,Big Boss\n" +
+"81,21/11/15,18:00,Game Dude,Ingsoc,Y,Game Dude\n" +
+"82,22/11/15,18:00,Big Brother,RNGesus,Y,Big Brother\n" +
+"83,23/11/15,18:00,Esports,Napoleon Wilson,Y,Esports\n" +
+"84,24/11/15,18:00,Space Pirate,Billy Casper,Y,Billy Casper\n" +
+"85,25/11/15,18:00,Leeroy,Tyler,Y,Leeroy\n" +
+"86,26/11/15,18:00,M’lady,Dennis,Y,Dennis\n" +
+"87,27/11/15,18:00,Ripley,Macho Man,Y,Ripley\n" +
+"88,28/11/15,18:00,Jenkins,Einstein100,Y,Jenkins\n" +
+"89,29/11/15,18:00,Kes,Big Boss,Y,Big Boss\n" +
+"90,30/11/15,18:00,Otacon,Magnitude,Y,Magnitude\n" +
+"91,01/12/15,18:00,Dennis,Ingsoc,Y,Dennis\n" +
+"92,02/12/15,18:00,Game Dude,RNGesus,Y,RNGesus\n" +
+"93,03/12/15,18:00,Big Brother,Napoleon Wilson,Y,Big Brother\n" +
+"94,04/12/15,18:00,Esports,Billy Casper,Y,Esports\n" +
+"95,05/12/15,18:00,Space Pirate,Tyler,Y,Space Pirate\n" +
+"96,06/12/15,18:00,Otacon,Leeroy,Y,Leeroy\n" +
+"97,07/12/15,18:00,M’lady,Macho Man,Y,Macho Man\n" +
+"98,08/12/15,18:00,Ripley,Einstein100,Y,Einstein100\n" +
+"99,09/12/15,18:00,Jenkins,Big Boss,Y,Jenkins\n" +
+"100,10/12/15,18:00,Kes,Magnitude,Y,Kes\n" +
+"101,11/12/15,18:00,Macho Man,Ingsoc,Y,Ingsoc\n" +
+"102,12/12/15,18:00,Dennis,RNGesus,Y,RNGesus\n" +
+"103,13/12/15,18:00,Game Dude,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"104,14/12/15,18:00,Big Brother,Billy Casper,Y,Big Brother\n" +
+"105,15/12/15,18:00,Esports,Tyler,Y,Esports\n" +
+"106,16/12/15,18:00,Space Pirate,Leeroy,Y,Space Pirate\n" +
+"107,17/12/15,18:00,M’lady,Einstein100,Y,Einstein100\n" +
+"108,18/12/15,18:00,Ripley,Big Boss,Y,Big Boss\n" +
+"109,19/12/15,18:00,Jenkins,Magnitude,Y,Magnitude\n" +
+"110,20/12/15,18:00,Otacon,Kes,Y,Kes\n" +
+"111,21/12/15,18:00,Einstein100,Ingsoc,Y,Einstein100\n" +
+"112,22/12/15,18:00,Macho Man,RNGesus,Y,RNGesus\n" +
+"113,23/12/15,18:00,Dennis,Napoleon Wilson,Y,Napoleon Wilson\n" +
+"114,24/12/15,18:00,Game Dude,Billy Casper,Y,Game Dude\n" +
+"115,25/12/15,18:00,Big Brother,Tyler,Y,Big Brother\n" +
+"116,26/12/15,18:00,Esports,Leeroy,Y,Esports\n" +
+"117,27/12/15,18:00,Otacon,Space Pirate,Y,Otacon\n" +
+"118,28/12/15,18:00,M’lady,Big Boss,Y,M’lady\n" +
+"119,29/12/15,18:00,Ripley,Magnitude,Y,Magnitude\n" +
+"120,30/12/15,18:00,Jenkins,Kes,Y,Kes\n" +
+"121,31/12/15,18:00,Big Boss,Ingsoc,Y,Ingsoc\n" +
+"122,01/01/16,18:00,Einstein100,RNGesus,,\n" +
+"123,02/01/16,18:00,Macho Man,Napoleon Wilson,,\n" +
+"124,03/01/16,18:00,Dennis,Billy Casper,,\n" +
+"125,04/01/16,18:00,Game Dude,Tyler,,\n" +
+"126,05/01/16,18:00,Big Brother,Leeroy,,\n" +
+"127,06/01/16,18:00,Esports,Space Pirate,,\n" +
+"128,07/01/16,18:00,M’lady,Magnitude,,\n" +
+"129,08/01/16,18:00,Ripley,Kes,,\n" +
+"130,09/01/16,18:00,Otacon,Jenkins,,\n" +
+"131,10/01/16,18:00,Magnitude,Ingsoc,,\n" +
+"132,11/01/16,18:00,Big Boss,RNGesus,,\n" +
+"133,12/01/16,18:00,Einstein100,Napoleon Wilson,,\n" +
+"134,13/01/16,18:00,Macho Man,Billy Casper,,\n" +
+"135,14/01/16,18:00,Dennis,Tyler,,\n" +
+"136,15/01/16,18:00,Game Dude,Leeroy,,\n" +
+"137,16/01/16,18:00,Big Brother,Space Pirate,,\n" +
+"138,17/01/16,18:00,Otacon,Esports,,\n" +
+"139,18/01/16,18:00,M’lady,Kes,,\n" +
+"140,19/01/16,18:00,Ripley,Jenkins,,\n" +
+"141,20/01/16,18:00,Kes,Ingsoc,,\n" +
+"142,21/01/16,18:00,Magnitude,RNGesus,,\n" +
+"143,22/01/16,18:00,Big Boss,Napoleon Wilson,,\n" +
+"144,23/01/16,18:00,Einstein100,Billy Casper,,\n" +
+"145,24/01/16,18:00,Macho Man,Tyler,,\n" +
+"146,25/01/16,18:00,Dennis,Leeroy,,\n" +
+"147,26/01/16,18:00,Game Dude,Space Pirate,,\n" +
+"148,27/01/16,18:00,Big Brother,Esports,,\n" +
+"149,28/01/16,18:00,M’lady,Jenkins,,\n" +
+"150,29/01/16,18:00,Otacon,Ripley,,\n" +
+"151,30/01/16,18:00,Jenkins,Ingsoc,,\n" +
+"152,31/01/16,18:00,Kes,RNGesus,,\n" +
+"153,01/02/16,18:00,Magnitude,Napoleon Wilson,,\n" +
+"154,02/02/16,18:00,Big Boss,Billy Casper,,\n" +
+"155,03/02/16,18:00,Einstein100,Tyler,,\n" +
+"156,04/02/16,18:00,Macho Man,Leeroy,,\n" +
+"157,05/02/16,18:00,Dennis,Space Pirate,,\n" +
+"158,06/02/16,18:00,Game Dude,Esports,,\n" +
+"159,07/02/16,18:00,Otacon,Big Brother,,\n" +
+"160,08/02/16,18:00,M’lady,Ripley,,\n" +
+"161,09/02/16,18:00,Ripley,Ingsoc,,\n" +
+"162,10/02/16,18:00,Jenkins,RNGesus,,\n" +
+"163,11/02/16,18:00,Kes,Napoleon Wilson,,\n" +
+"164,12/02/16,18:00,Magnitude,Billy Casper,,\n" +
+"165,13/02/16,18:00,Big Boss,Tyler,,\n" +
+"166,14/02/16,18:00,Einstein100,Leeroy,,\n" +
+"167,15/02/16,18:00,Macho Man,Space Pirate,,\n" +
+"168,16/02/16,18:00,Dennis,Esports,,\n" +
+"169,17/02/16,18:00,Game Dude,Big Brother,,\n" +
+"170,18/02/16,18:00,Otacon,M’lady,,\n" +
+"171,19/02/16,18:00,M’lady,Ingsoc,,\n" +
+"172,20/02/16,18:00,Ripley,RNGesus,,\n" +
+"173,21/02/16,18:00,Jenkins,Napoleon Wilson,,\n" +
+"174,22/02/16,18:00,Kes,Billy Casper,,\n" +
+"175,23/02/16,18:00,Magnitude,Tyler,,\n" +
+"176,24/02/16,18:00,Big Boss,Leeroy,,\n" +
+"177,25/02/16,18:00,Einstein100,Space Pirate,,\n" +
+"178,26/02/16,18:00,Macho Man,Esports,,\n" +
+"179,27/02/16,18:00,Dennis,Big Brother,,\n" +
+"180,28/02/16,18:00,Otacon,Game Dude,,\n" +
+"181,29/02/16,18:00,Otacon,Ingsoc,,\n" +
+"182,01/03/16,18:00,M’lady,RNGesus,,\n" +
+"183,02/03/16,18:00,Ripley,Napoleon Wilson,,\n" +
+"184,03/03/16,18:00,Jenkins,Billy Casper,,\n" +
+"185,04/03/16,18:00,Kes,Tyler,,\n" +
+"186,05/03/16,18:00,Magnitude,Leeroy,,\n" +
+"187,06/03/16,18:00,Big Boss,Space Pirate,,\n" +
+"188,07/03/16,18:00,Einstein100,Esports,,\n" +
+"189,08/03/16,18:00,Macho Man,Big Brother,,\n" +
+"190,09/03/16,18:00,Dennis,Game Dude,,\n",
+"firesideResults.txt":
+"Leeroy,19,7,12\n" +
+"Jenkins,19,8,11\n" +
+"Tyler,19,0,19\n" +
+"Napoleon Wilson,19,7,12\n" +
+"Big Boss,19,7,12\n" +
+"Game Dude,19,5,14\n" +
+"Macho Man,19,3,16\n" +
+"Space Pirate,19,6,13\n" +
+"Billy Casper,19,7,12\n" +
+"Otacon,19,7,12\n" +
+"Big Brother,19,7,12\n" +
+"Ingsoc,19,5,14\n" +
+"Ripley,19,5,14\n" +
+"M’lady,19,4,15\n" +
+"Einstein100,19,8,11\n" +
+"Dennis,19,5,14\n" +
+"Esports,19,8,11\n" +
+"RNGesus,19,7,12\n" +
+"Kes,19,9,10\n" +
+"Magnitude,19,6,13\n"
+};
+
+/* ============================================================
+   PYODIDE LOADING (identical to the Code Editor)
+   ============================================================ */
+var pyodideReady = false, pyodideLoading = false, pyodideInstance = null;
+
+function loadPyodideIfNeeded() {
+  return new Promise(function (resolve, reject) {
+    if (pyodideReady) { resolve(pyodideInstance); return; }
+    if (pyodideLoading) {
+      var iv = setInterval(function () {
+        if (pyodideReady) { clearInterval(iv); resolve(pyodideInstance); }
+      }, 200);
+      return;
+    }
+    pyodideLoading = true;
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+    script.onload = function () {
+      loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/" }).then(function (py) {
+        pyodideInstance = py; pyodideReady = true; pyodideLoading = false; resolve(py);
+      }).catch(reject);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   PRE-RUN INFINITE LOOP SCANNER (static check, no execution) —
+   runs against DEMO_SOURCE. Not there to protect a student typing
+   code (there's nothing for them to type here) — it's a safety
+   net for whoever is AUTHORING the hidden demo, same friendly
+   panel instead of a frozen tab if a `while True` slips in.
+   ============================================================ */
+function detectInfiniteLoop(code) {
+  var lines = code.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i], trimmed = line.trim();
+    if (/^while\s+(True|1)\s*:/.test(trimmed)) {
+      return "while True: always runs forever — it has no condition that can become False.";
+    }
+    var m = trimmed.match(/^while\s+(\w+)\s*([!=<>]=?|==)\s*(.+?)\s*:/);
+    if (m) {
+      var condVar = m[1];
+      var indent = line.match(/^(\s*)/)[1].length;
+      var body = [];
+      for (var j = i + 1; j < lines.length; j++) {
+        var bl = lines[j];
+        if (bl.trim() === "") continue;
+        var bi = bl.match(/^(\s*)/)[1].length;
+        if (bi <= indent) break;
+        body.push(bl);
+      }
+      if (body.length === 0) continue;
+      var assignRe = new RegExp("\\b" + condVar + "\\s*[+\\-*/%&|^]?=(?!=)");
+      var inputRe = new RegExp("\\b" + condVar + "\\s*=.*input\\s*\\(");
+      var modified = body.some(function (bl) { return assignRe.test(bl) || inputRe.test(bl); });
+      if (!modified) {
+        return "The variable \"" + condVar + "\" in the while condition is never changed inside the loop — so the condition never becomes False.";
+      }
+    }
+  }
+  return null;
+}
+
+/* ============================================================
+   WIRE UP THE DOM
+   ============================================================ */
+var output = document.getElementById("output");
+var statusDot = document.getElementById("statusDot");
+var statusTxt = document.getElementById("statusTxt");
+var runBtn = document.getElementById("runBtn");
+var themeToggle = document.getElementById("themeToggle");
+var themeIcon = document.getElementById("themeIcon");
+var themeLbl = document.getElementById("themeLbl");
+var fontUp = document.getElementById("fontUp");
+var fontDown = document.getElementById("fontDown");
+var fontSizeLbl = document.getElementById("fontSizeLbl");
+
+var THEME_KEY = "j277_embed_theme"; // shared with the Code Editor — one theme preference site-wide
+var currentFontSize = 12;
+
+function applyFontSize() {
+  fontSizeLbl.textContent = currentFontSize + "px";
+  output.style.fontSize = currentFontSize + "px";
+}
+fontUp.addEventListener("click", function () { currentFontSize = Math.min(20, currentFontSize + 1); applyFontSize(); });
+fontDown.addEventListener("click", function () { currentFontSize = Math.max(9, currentFontSize - 1); applyFontSize(); });
+
+/* ── Light / dark mode toggle (identical to the Code Editor) ── */
+function applyTheme(light) {
+  document.body.classList.toggle("j277-light", light);
+  themeIcon.className = light ? "ti ti-sun" : "ti ti-moon";
+  themeLbl.textContent = light ? "Light" : "Dark";
+  try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (e) {}
+}
+themeToggle.addEventListener("click", function () {
+  applyTheme(!document.body.classList.contains("j277-light"));
+});
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+  if (saved === "light") applyTheme(true);
+  else if (saved === "dark") applyTheme(false);
+  else applyTheme(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+})();
+
+/* ============================================================
+   RUN — executes the fixed DEMO_SOURCE, never anything the
+   visitor supplies. Same wrapping/error-cleaning approach as the
+   Code Editor, just always running the same hidden program.
+   ============================================================ */
+runBtn.addEventListener("click", function () {
+  var code = DEMO_SOURCE;
+
+  var loopWarning = detectInfiniteLoop(code);
+  if (loopWarning) {
+    output.innerHTML = "";
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "infinite loop detected";
+    var panel = document.createElement("div");
+    panel.className = "warn-panel";
+    panel.innerHTML =
+      '<div class="warn-head">\u26A0\uFE0F This demo\u2019s code might run forever</div>' +
+      '<div class="warn-detail"></div>';
+    panel.querySelector(".warn-detail").textContent = loopWarning + " (This is a problem in the hidden demo source — check DEMO_SOURCE.)";
+    output.appendChild(panel);
+    return;
+  }
+
+  output.innerHTML = '<div class="out-muted">Running\u2026</div>';
+  statusDot.classList.remove("dot-err");
+  statusTxt.textContent = pyodideReady ? "running\u2026" : "loading Python runtime\u2026";
+  runBtn.disabled = true;
+
+  loadPyodideIfNeeded().then(async function (py) {
+    output.innerHTML = "";
+    statusDot.classList.remove("dot-err");
+    statusTxt.textContent = "running\u2026";
+
+    // Write any demo files into Pyodide's virtual filesystem before running.
+    Object.keys(DEMO_FILES).forEach(function (filename) {
+      try { py.FS.writeFile(filename, DEMO_FILES[filename]); } catch (e) { console.warn("FS write failed:", e); }
+    });
+
+    var inputResolve = null;
+    function makeInlineInput(promptText) {
+      return new Promise(function (resolve) {
+        inputResolve = resolve;
+        var row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:baseline;gap:4px;margin:1px 0;flex-wrap:wrap;";
+        if (promptText) {
+          var span = document.createElement("span");
+          span.style.cssText = "color:var(--text);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre;";
+          span.textContent = promptText;
+          row.appendChild(span);
+        }
+        var inp = document.createElement("input");
+        inp.type = "text";
+        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
+        inp.setAttribute("autocomplete", "off"); inp.setAttribute("spellcheck", "false");
+        row.appendChild(inp);
+        output.appendChild(row);
+        output.scrollTop = output.scrollHeight;
+        setTimeout(function () { inp.focus(); }, 30);
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var val = inp.value; inp.remove();
+            var typed = document.createElement("span");
+            typed.style.cssText = "color:var(--success);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;";
+            typed.textContent = val;
+            row.appendChild(typed);
+            output.scrollTop = output.scrollHeight;
+            if (inputResolve) { inputResolve(val); inputResolve = null; }
+          }
+        });
+      });
+    }
+
+    var _outLines = 0, MAX_OUT = 200;
+    py.setStdout({ batched: function (s) {
+      s.split("\n").forEach(function (line, i, arr) {
+        if (i === arr.length - 1 && line === "") return;
+        if (_outLines >= MAX_OUT) {
+          if (_outLines === MAX_OUT) {
+            var cap = document.createElement("div");
+            cap.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;color:var(--warn);font-style:italic;";
+            cap.textContent = "\u2026 output capped at " + MAX_OUT + " lines\u2026";
+            output.appendChild(cap);
+          }
+          _outLines++; return;
+        }
+        var d = document.createElement("div");
+        d.className = "out-ok";
+        d.textContent = line;
+        output.appendChild(d);
+        _outLines++;
+      });
+      output.scrollTop = output.scrollHeight;
+    }});
+    py.setStderr({ batched: function (s) {
+      var translated = s.replace(/<exec>:(\d+):/g, function (whole, numStr) {
+        var n = parseInt(numStr, 10);
+        if (typeof WRAPPER_HEADER_LINES !== "undefined" && n > WRAPPER_HEADER_LINES && n <= WRAPPER_HEADER_LINES + demoLines.length) {
+          return "line " + (n - WRAPPER_HEADER_LINES) + ":";
+        }
+        return whole;
+      });
+      var d = document.createElement("div");
+      d.className = "out-err";
+      d.textContent = translated;
+      output.appendChild(d);
+      output.scrollTop = output.scrollHeight;
+    }});
+
+    /* ============================================================
+       INPUT() BRIDGE — real JSPI-based inline UI when the browser
+       and Pyodide support it, automatic fallback to window.prompt()
+       when they don't.
+       ------------------------------------------------------------
+       JavaScript Promise Integration (JSPI) is what makes it possible
+       for Python's *synchronous* input() to genuinely await our async,
+       Promise-returning makeInlineInput() UI, via Pyodide's run_sync()
+       (docs: https://blog.pyodide.org/posts/jspi/). This is a new web
+       standard (finished April 2025; Chrome 137+, May 2025) and Pyodide
+       only fully integrates it from v0.27.7 onward — NOT universally
+       available yet (no default Firefox/Safari support as of when this
+       was written), so detecting support and falling back cleanly is
+       essential, not optional. can_run_sync() is Pyodide's own official
+       feature-detection function for exactly this.
+       ============================================================ */
+    var canRunSync = false;
+    try {
+      canRunSync = await py.runPythonAsync("from pyodide.ffi import can_run_sync; can_run_sync()");
+    } catch (e) {
+      canRunSync = false; // older Pyodide without can_run_sync, or JSPI unsupported in this browser
+    }
+
+    var STEP_LIMIT = 10000;
+    var jsInputFn, wrapperHeader;
+
+    if (canRunSync) {
+      // Real inline UI path. _js_input returns a genuine JS Promise
+      // (makeInlineInput's own return value, untouched) — run_sync()
+      // on the Python side blocks on that Promise via stack switching,
+      // so input() looks perfectly synchronous to the demo/student code
+      // even though the UI itself is non-blocking underneath.
+      jsInputFn = py.toPy(function (promptText) { return makeInlineInput(promptText); });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "from pyodide.ffi import run_sync\n" +
+        "_original_input = builtins.input\n" +
+        "async def _async_input(prompt):\n" +
+        "    return str(await _js_input(prompt))\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return run_sync(_async_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n";
+      statusTxt.textContent = "Python 3.12 · Pyodide · running (inline input)\u2026";
+    } else {
+      // Fallback path — unchanged from before, proven to work everywhere.
+      jsInputFn = py.toPy(function (promptText) {
+        var result = window.prompt(promptText || "");
+        return result === null ? "" : String(result);
+      });
+      wrapperHeader =
+        "import builtins, sys\n" +
+        "_original_input = builtins.input\n" +
+        "def _patched_input(prompt=''):\n" +
+        "    return str(_js_input(prompt))\n" +
+        "builtins.input = _patched_input\n" +
+        "_j277_steps = [0]\n" +
+        "def _j277_trace(frame, event, arg):\n" +
+        "    if event == 'line':\n" +
+        "        _j277_steps[0] += 1\n" +
+        "        if _j277_steps[0] > " + STEP_LIMIT + ":\n" +
+        "            raise Exception('__INFINITE_LOOP__')\n" +
+        "    return _j277_trace\n" +
+        "sys.settrace(_j277_trace)\n" +
+        "try:\n";
+      statusTxt.textContent = "Python 3.12 · Pyodide · running (popup input)\u2026";
+    }
+    py.globals.set("_js_input", jsInputFn);
+
+    // WRAPPER_HEADER_LINES is computed from whichever header string was
+    // actually used above — correct automatically for either branch,
+    // since the two headers have different line counts.
+    var WRAPPER_HEADER_LINES = wrapperHeader.split("\n").length - 1;
+    var demoLines = code.split("\n");
+    var wrapped =
+      wrapperHeader +
+      demoLines.map(function (l) { return "    " + l; }).join("\n") + "\n" +
+      "finally:\n" +
+      "    sys.settrace(None)\n" +
+      "    builtins.input = _original_input\n";
+
+    try {
+      await py.runPythonAsync(wrapped);
+      if (!output.children.length) output.innerHTML = '<div class="out-muted">No output.</div>';
+      statusDot.classList.remove("dot-err");
+      statusTxt.textContent = "Python 3.12 · done";
+    } catch (err) {
+      var raw = err.message || String(err);
+      var cleaned = (function (rawMsg) {
+        // Only a frame Python itself compiled from the hidden demo code
+        // block is ever shown — identified two ways, both required: the
+        // frame's file is "<exec>" (true of the wrapper's own functions
+        // too, since they're compiled from the same exec'd text) AND its
+        // line number actually falls inside the demo code range (the
+        // wrapper's own lines don't). This is deliberately an ALLOWLIST,
+        // not a list of known-internal patterns to hide — any Pyodide/
+        // CPython internal frame, including ones we've never seen before,
+        // is automatically excluded by simply not matching, rather than
+        // needing to be individually recognised and added to a blocklist.
+        var studentRangeStart = WRAPPER_HEADER_LINES + 1;
+        var studentRangeEnd = WRAPPER_HEADER_LINES + demoLines.length;
+        var lines = rawMsg.split("\n");
+        var lineNum = null, srcCode = [], errorType = "";
+        var i = 0;
+        while (i < lines.length) {
+          var t = lines[i].trim();
+          if (!t || t === "Traceback (most recent call last):") { i++; continue; }
+          var fileM = t.match(/^File "([^"]*)", line (\d+)/);
+          if (fileM) {
+            var rawLine = parseInt(fileM[2], 10);
+            var isDemoFrame = fileM[1] === "<exec>" && rawLine >= studentRangeStart && rawLine <= studentRangeEnd;
+            if (isDemoFrame) lineNum = rawLine - WRAPPER_HEADER_LINES;
+            i++;
+            if (i < lines.length) {
+              var codeLineTrim = lines[i].trim();
+              var isFrameOrErrorLine = /^File "/.test(codeLineTrim) ||
+                /^([A-Z][A-Za-z0-9_]*(Error|Exception|Warning)|StopIteration|StopAsyncIteration|GeneratorExit|KeyboardInterrupt|SystemExit)\b/.test(codeLineTrim);
+              if (codeLineTrim && !isFrameOrErrorLine) {
+                if (isDemoFrame) srcCode.push(lines[i]);
+                i++;
+                if (i < lines.length && /^\^+$/.test(lines[i].trim())) i++;
+              }
+            }
+            continue;
+          }
+          if (/^([A-Z][A-Za-z0-9_]*(Error|Exception|Warning)|StopIteration|StopAsyncIteration|GeneratorExit|KeyboardInterrupt|SystemExit)\b/.test(t)) {
+            // FIX (ported from the J277 Code Editor's own fix, applied here
+            // for consistency): this regex used to be a hardcoded allowlist
+            // of specific error names, which silently missed
+            // ModuleNotFoundError and several other genuine Python
+            // exceptions. Replaced with a general pattern: any
+            // CapitalizedIdentifier ending in Error/Exception/Warning, plus
+            // the handful of built-ins that don't follow that suffix.
+            //
+            // Also ported: SyntaxError/IndentationError messages sometimes
+            // embed their OWN line reference directly in the text (e.g.
+            // "...on line N" or "unterminated string literal (detected at
+            // line N)") — a different format from the "File "...", line N"
+            // pattern handled above. Translate this embedded reference too,
+            // when it falls inside the demo's own code range.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
+              var n = parseInt(numStr, 10);
+              if (n >= studentRangeStart && n <= studentRangeEnd) {
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
+              }
+              return whole;
+            });
+            errorType = t; i++; continue;
+          }
+          i++;
+        }
+        var parts = [];
+        if (errorType) parts.push(lineNum ? "Line " + lineNum + " (in the hidden demo source) — " + errorType : errorType);
+        if (srcCode.length > 0) parts.push(srcCode.join("\n").trim());
+        if (parts.length === 0) return (rawMsg.split("\n").filter(function (l) { return l.trim(); }).pop() || rawMsg).trim();
+        return parts.join("\n");
+      })(raw);
+
+
+      if (cleaned.indexOf("__INFINITE_LOOP__") !== -1) {
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "infinite loop detected";
+        var loopPanel = document.createElement("div");
+        loopPanel.className = "warn-panel";
+        loopPanel.innerHTML =
+          '<div class="warn-head">\u26A0\uFE0F This demo seems to be running forever\u2026</div>' +
+          '<div class="warn-detail">Stopped after ' + STEP_LIMIT.toLocaleString() + " steps. This is a bug in the hidden demo source, not something a visitor caused.</div>";
+        output.appendChild(loopPanel);
+      } else if (cleaned.indexOf("SystemExit") === -1) {
+        var d = document.createElement("div");
+        d.className = "out-err";
+        d.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre-wrap;";
+        d.textContent = cleaned.trim();
+        output.appendChild(d);
+        statusDot.classList.add("dot-err");
+        statusTxt.textContent = "error";
+      } else {
+        statusTxt.textContent = "Python 3.12 · done";
+      }
+    }
+    runBtn.disabled = false;
+  }).catch(function (err) {
+    output.innerHTML = '<div class="out-err">Could not load Python runtime: ' + err.message + "</div>";
+    statusDot.classList.add("dot-err");
+    statusTxt.textContent = "load failed";
+    runBtn.disabled = false;
+  });
+});
+
+/* ============================================================
+   FULL SCREEN (identical to the Code Editor)
+   ============================================================ */
+(function initFullscreen() {
+  var widgetRoot = document.getElementById("widgetRoot");
+  var fsBtn = document.getElementById("fsBtn");
+  var fsIcon = document.getElementById("fsIcon");
+  var fsLbl = document.getElementById("fsLbl");
+  var isFallbackExpanded = false;
+
+  function setBtnState(isFull) {
+    fsIcon.className = isFull ? "ti ti-x" : "ti ti-maximize";
+    fsLbl.textContent = isFull ? "Exit full screen" : "Full screen";
+    fsBtn.title = isFull ? "Exit full screen (Esc)" : "Full screen";
+  }
+  function enterFullscreen() {
+    if (widgetRoot.requestFullscreen) {
+      widgetRoot.requestFullscreen().then(function () { setBtnState(true); }).catch(expandFallback);
+    } else if (widgetRoot.webkitRequestFullscreen) {
+      widgetRoot.webkitRequestFullscreen();
+      setBtnState(true);
+    } else {
+      expandFallback();
+    }
+  }
+  function expandFallback() {
+    isFallbackExpanded = true;
+    widgetRoot.classList.add("j277-fs-fallback");
+    setBtnState(true);
+  }
+  function exitFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    if (isFallbackExpanded) {
+      widgetRoot.classList.remove("j277-fs-fallback");
+      isFallbackExpanded = false;
+    }
+    setBtnState(false);
+  }
+  document.addEventListener("fullscreenchange", function () {
+    if (!document.fullscreenElement) setBtnState(false);
+  });
+  document.addEventListener("webkitfullscreenchange", function () {
+    if (!document.webkitFullscreenElement) setBtnState(false);
+  });
+  fsBtn.addEventListener("click", function () {
+    if (document.fullscreenElement || document.webkitFullscreenElement || isFallbackExpanded) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  });
+})();
+
+/* ============================================================
+   AUTO-RESIZE (identical to the Code Editor)
+   ============================================================ */
+(function initAutoResize() {
+  var lastSentHeight = 0;
+  function currentHeight() {
+    return Math.ceil(document.getElementById("widgetRoot").getBoundingClientRect().height);
+  }
+  function postHeight(h) {
+    try {
+      window.parent.postMessage({ source: "j277-code-widget", pageId: PAGE_ID, height: h }, "*");
+    } catch (e) {}
+  }
+  function sendHeightIfChanged() {
+    var h = currentHeight();
+    if (h === lastSentHeight) return;
+    lastSentHeight = h;
+    postHeight(h);
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { sendHeightIfChanged(); }).observe(document.getElementById("widgetRoot"));
+  } else {
+    setInterval(sendHeightIfChanged, 500);
+  }
+  window.addEventListener("resize", sendHeightIfChanged);
+  var retries = 0;
+  var retryTimer = setInterval(function () {
+    var h = currentHeight();
+    lastSentHeight = h;
+    postHeight(h);
+    retries++;
+    if (retries >= 20) clearInterval(retryTimer);
+  }, 1000);
+})();
+
+/* ── Init ──────────────────────────────────────────────────── */
+applyFontSize();
+</script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
