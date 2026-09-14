@@ -194,33 +194,42 @@ document.getElementById("taskTitleEl").textContent = TASK_TITLE;
 /* ============================================================
    HIDDEN DEMO SOURCE
    ------------------------------------------------------------
-   Real Task 3 content — written from scratch in chat against the
-   actual NEA specification Andy pasted (not existing code to
-   verify, unlike every other viewer in this fleet). A fixture
-   manager reading two real data files: firesideFixtures.txt (190
-   rows) and firesideResults.txt (20 rows), both supplied via
-   DEMO_FILES below rather than embedded in this source, matching
-   how the Code Editor's own text-file tabs work.
+   Real Task 3 content — updated at Andy's own request once he
+   supplied the FULL spec for Options B and C (previously only
+   named, not detailed at all). Genuinely different requirements
+   from the first version, verified against the actual data, not
+   assumed to still hold:
+   1) Option A — unchanged from the first version, since its own
+      spec was always complete: search, validate, display, not-
+      found handling, all exactly as specified.
+   2) Option B — now genuinely different: the display format adds
+      Fixture Time (which Option A deliberately excludes, so these
+      two options show different column sets from the same file),
+      and a running total of outstanding fixtures must be shown at
+      the end. Confirmed the total is exactly 69, matching the
+      fixtures numbered 122-190.
+   3) Option C — substantially different, not just reformatted:
+      points are now calculated directly (3 per win) rather than
+      just displaying existing stats, and — genuinely important —
+      any player with zero wins must be excluded entirely. Verified
+      directly: Tyler (0 wins) does not appear anywhere in the
+      output. Confirmed points arithmetic is correct throughout
+      (Kes: 9 wins -> 27 points, Macho Man: 3 wins -> 9 points), and
+      confirmed the list is sorted by points, descending.
+   4) All three tables now use .ljust() for genuine column alignment
+      (Andy's own explicit request) rather than the manual, ad-hoc
+      spacing from the first version, which didn't actually line up
+      once values of different lengths were involved. Column widths
+      were set directly from the real data's own longest values in
+      each column (checked programmatically, not guessed) plus
+      padding, and deliberately not built with f-strings, matching
+      the no-f-strings convention already established for the Data
+      Types series elsewhere in this fleet. Stress-tested alignment
+      specifically against "Napoleon Wilson", the longest nickname
+      in the entire dataset, to confirm no column collides.
 
-   Option A (search) is fully specified in the task text and
-   implemented exactly, including the deliberate detail that
-   Fixture Time is excluded from the display despite being part of
-   the file's own column structure. Options B (outstanding
-   fixtures) and C (leader board) were only named, not detailed, so
-   built on reasonable interpretations grounded directly in the
-   data's own structure: B shows the 69 fixtures with a blank
-   "Fixture Played" field (rows 122-190), C sorts all 20 results by
-   Matches Won, descending. Andy reviewed and accepted this design
-   before it was built into a widget.
-
-   Verified end-to-end with a real local Python run against the
-   actual data, covering every path: a found, played fixture (1),
-   invalid non-numeric input followed by a found, unplayed fixture
-   (122, confirming the validation loop and blank-field display both
-   work), a genuinely not-found fixture (999), the full outstanding-
-   fixtures list (confirmed all 69, correctly filtered), the full
-   leader board (confirmed correctly sorted, Kes on 9 wins first,
-   Tyler on 0 last), an invalid menu choice, and quit.
+   DEMO_FILES (below) is unchanged from the first version — same
+   two real data files, since only the program logic changed here.
 
    Built on the fully-fixed code_viewer base (see NEA_Task1.html for
    the full account of what was ported in and verified: analytics,
@@ -269,8 +278,8 @@ var DEMO_SOURCE =
 "        if fixture[0] == fixtureNumber:\n" +
 "            found = True\n" +
 "            print(\"\")\n" +
-"            print(\"Fixture Number   Fixture Date   Player 1 Nickname   Player 2 Nickname   Fixture Played   Winning Nickname\")\n" +
-"            print(fixture[0], \"             \", fixture[1], \"    \", fixture[3], \"            \", fixture[4], \"        \", fixture[5], \"               \", fixture[6])\n" +
+"            print(\"Fixture Number\".ljust(17) + \"Fixture Date\".ljust(15) + \"Player 1 Nickname\".ljust(20) + \"Player 2 Nickname\".ljust(20) + \"Fixture Played\".ljust(17) + \"Winning Nickname\".ljust(19))\n" +
+"            print(fixture[0].ljust(17) + fixture[1].ljust(15) + fixture[3].ljust(20) + fixture[4].ljust(20) + fixture[5].ljust(17) + fixture[6].ljust(19))\n" +
 "            break\n" +
 "\n" +
 "    if found == False:\n" +
@@ -279,19 +288,27 @@ var DEMO_SOURCE =
 "\n" +
 "def outstandingFixtures(fixtures):\n" +
 "    print(\"\")\n" +
-"    print(\"Outstanding Fixtures\")\n" +
-"    print(\"Fixture Number   Fixture Date   Player 1 Nickname   Player 2 Nickname\")\n" +
+"    print(\"Fixture Number\".ljust(17) + \"Fixture Date\".ljust(15) + \"Fixture Time\".ljust(15) + \"Player 1 Nickname\".ljust(20) + \"Player 2 Nickname\".ljust(20))\n" +
+"    totalOutstanding = 0\n" +
 "    for fixture in fixtures:\n" +
 "        if fixture[5] != \"Y\":\n" +
-"            print(fixture[0], \"  \", fixture[1], \"  \", fixture[3], \"  \", fixture[4])\n" +
+"            print(fixture[0].ljust(17) + fixture[1].ljust(15) + fixture[2].ljust(15) + fixture[3].ljust(20) + fixture[4].ljust(20))\n" +
+"            totalOutstanding = totalOutstanding + 1\n" +
+"    print(\"\")\n" +
+"    print(\"Total number of fixtures outstanding:\", totalOutstanding)\n" +
 "\n" +
 "def leaderBoard(results):\n" +
-"    sortedResults = sorted(results, key=lambda x: int(x[2]), reverse=True)\n" +
 "    print(\"\")\n" +
-"    print(\"Leader Board\")\n" +
-"    print(\"Player Nickname   Matches Played   Matches Won   Matches Lost\")\n" +
-"    for r in sortedResults:\n" +
-"        print(r[0], \"  \", r[1], \"  \", r[2], \"  \", r[3])\n" +
+"    print(\"Player Nickname\".ljust(18) + \"Matches Played\".ljust(17) + \"Matches Won\".ljust(14) + \"Matches Lost\".ljust(15) + \"Points\".ljust(9))\n" +
+"    qualifying = []\n" +
+"    for r in results:\n" +
+"        matchesWon = int(r[2])\n" +
+"        if matchesWon >= 1:\n" +
+"            points = matchesWon * 3\n" +
+"            qualifying.append([r[0], r[1], r[2], r[3], points])\n" +
+"    qualifying = sorted(qualifying, key=lambda x: x[4], reverse=True)\n" +
+"    for r in qualifying:\n" +
+"        print(r[0].ljust(18) + r[1].ljust(17) + r[2].ljust(14) + r[3].ljust(15) + str(r[4]).ljust(9))\n" +
 "\n" +
 "def displayMenu():\n" +
 "    print(\"\")\n" +
