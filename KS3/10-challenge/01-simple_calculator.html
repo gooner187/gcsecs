@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Calculator — J277 Code Editor</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<title>Blank Code Editor — J277 Code Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
 <style>
 /* ============================================================
@@ -29,7 +29,7 @@ body.j277-light{
   --bg:#ffffff; --surface:#ffffff; --surface2:#eef0f5; --border:#d7dbe4;
   --accent:#2563eb; --success:#1a9c66; --error:#d1453b; --warn:#c5651f;
   --text:#1b1f2a; --text-muted:#6b7280;
-  --hl-kw:#0000ff; --hl-bi:#795e26; --hl-str:#a31515; --hl-num:#098658; --hl-cm:#008000;
+  --hl-kw:#aa22ff; --hl-bi:var(--text); --hl-str:#a31515; --hl-num:#0000ff; --hl-cm:#008000;
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 /* NOTE: deliberately no html/body rules here. This file is often pasted
@@ -72,7 +72,25 @@ body{
 }
 #widgetRoot:fullscreen .ce-body,
 #widgetRoot:-webkit-full-screen .ce-body,
-#widgetRoot.j277-fs-fallback .ce-body{ flex:1; min-height:0; }
+#widgetRoot.j277-fs-fallback .ce-body,
+#widgetRoot:fullscreen #txtEditorWrap,
+#widgetRoot:-webkit-full-screen #txtEditorWrap,
+#widgetRoot.j277-fs-fallback #txtEditorWrap{ flex:1; min-height:0; }
+/* FIX: #txtEditorWrap (the full-width text-file editor, shown instead
+   of .ce-body when a text-file tab like poem.txt is active) was
+   missing from this rule entirely — .ce-body already correctly grows
+   to fill the fullscreen viewport via flex:1, but the text-file editor
+   had no equivalent, so it just sat at its own natural/minimum height
+   with a large empty gap below it and the footer stranded partway down
+   the screen, confirmed directly with a screenshot. Reported by Andy as
+   "can't see the code again" after clicking a text-file tab in full
+   screen — the Python tab itself was still genuinely present and
+   clickable in testing, so the more likely explanation is this broken,
+   confusing layout (a poem occupying a sliver of the screen surrounded
+   by a huge empty white gap) made the tab bar easy to overlook, rather
+   than it being literally unreachable. Fixing the layout properly
+   removes the confusion either way, regardless of which explanation
+   was the actual cause on Andy's own device. */
 /* Square off the chrome's corners in fullscreen — rounded corners look
    like a stray gap/inset right at the true screen edge. */
 #widgetRoot:fullscreen .topbar, #widgetRoot:-webkit-full-screen .topbar, #widgetRoot.j277-fs-fallback .topbar{ border-radius:0; }
@@ -89,7 +107,7 @@ body{
   border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .title{
-  font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:var(--text);
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; font-weight:700; color:var(--text);
   display:flex; align-items:center; gap:6px; white-space:nowrap;
 }
 .title i{ color:var(--accent); font-size:15px; }
@@ -126,7 +144,7 @@ body{
 .v-handle-dots{ display:flex; flex-direction:column; gap:3px; pointer-events:none; }
 .v-handle-dots span{ width:2px; height:2px; border-radius:50%; background:var(--text-muted); opacity:.6; }
 .pane-lbl{
-  font-size:9px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.07em;
+  font-size:9px; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; text-transform:uppercase; letter-spacing:.07em;
   color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
 }
 
@@ -137,7 +155,7 @@ body{
 }
 .file-tab{
   display:flex; align-items:center; gap:5px; padding:6px 10px; font-size:10.5px;
-  font-family:'Space Mono',monospace; cursor:pointer; border-bottom:2px solid transparent;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; cursor:pointer; border-bottom:2px solid transparent;
   white-space:nowrap; color:var(--text-muted); user-select:none;
 }
 .file-tab.active{ background:var(--bg); border-bottom-color:var(--accent); color:var(--accent); font-weight:600; }
@@ -146,7 +164,7 @@ body{
   border:none; background:none; color:inherit; cursor:pointer; font-size:13px; line-height:1; padding:0 0 0 4px;
 }
 .file-tab-input{
-  background:none; border:none; outline:none; font-family:'Space Mono',monospace; font-size:10.5px;
+  background:none; border:none; outline:none; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:10.5px;
   color:inherit; width:82px; font-weight:inherit;
 }
 .file-tab-open{
@@ -169,18 +187,18 @@ body{
   border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .txt-editor-ta{
-  flex:1; font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  flex:1; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
   color:var(--text); background:var(--bg); border:none; outline:none; resize:none; tab-size:4;
 }
 .editor-area{ flex:1; display:flex; min-height:0; overflow:hidden; }
 .line-nums{
-  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:8px 6px 8px 10px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 6px 8px 10px;
   color:var(--text-muted); background:var(--surface); text-align:right; user-select:none;
   overflow:hidden; white-space:pre; flex-shrink:0; border-right:0.5px solid var(--border);
 }
 .hl-wrap{ position:relative; flex:1; overflow:hidden; background:var(--bg); min-height:0; }
 .hl-overlay{
-  position:absolute; inset:0; font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px;
+  position:absolute; inset:0; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px;
   pointer-events:none; white-space:pre; tab-size:4; overflow:hidden;
   color:var(--text);
 }
@@ -190,14 +208,14 @@ body{
 .hl-overlay .hl-num{ color:var(--hl-num); }
 .hl-overlay .hl-cm{ color:var(--hl-cm); }
 .code-ta{
-  font-family:'Space Mono',monospace; line-height:1.7; padding:8px 10px; color:transparent;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; line-height:1.7; padding:8px 10px; color:transparent;
   background:transparent; caret-color:var(--text); border:none; outline:none; resize:none;
   width:100%; height:100%; tab-size:4; position:relative; z-index:1;
   overflow-y:auto; overflow-x:auto; white-space:pre; box-sizing:border-box;
 }
 .out-pane{ border-left:0.5px solid var(--border); }
 .output{
-  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:8px 10px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:8px 10px;
   background:var(--surface2); flex:1; overflow:auto; white-space:pre-wrap; color:var(--text);
 }
 .out-ok{ color:var(--success); }
@@ -214,13 +232,13 @@ body{
 .footer-left{ display:flex; align-items:center; gap:6px; }
 .dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
 .dot-err{ background:var(--error); }
-.footer-txt{ font-size:10px; color:var(--text-muted); font-family:'Space Mono',monospace; }
-.hint{ font-size:9.5px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
 
 /* Infinite-loop / warning panel */
 .warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
 .warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
-.warn-detail{ font-size:11px; color:var(--text-muted); font-family:'Space Mono',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; margin-bottom:10px; line-height:1.6; }
 .warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
 .warn-btn{
   display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
@@ -240,7 +258,7 @@ body{
 
 <div class="wrap" id="widgetRoot">
   <div class="topbar">
-    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">Calculator</span></div>
+    <div class="title"><i class="ti ti-brand-python" aria-hidden="true"></i><span id="challengeTitleEl">Blank Code Editor</span></div>
     <div class="spacer"></div>
     <div class="font-row">
       <button id="fontDown" title="Smaller text">A-</button>
@@ -268,8 +286,23 @@ body{
   <input type="file" id="openFileInput" accept=".py,.txt,.csv" style="display:none;" />
 
   <div class="ce-body" id="ceBody">
-    <div class="pane" id="editorPane" style="flex:1.35;">
-      <div class="pane-lbl" id="editorPaneLbl">calculator.py</div>
+    <div class="pane" id="editorPane" style="flex:3;">
+      <!-- FIX: default split changed from flex:1.35 (~57%) to flex:3
+           (~75%, given outputPane stays at flex:1 -> 3/(3+1)=0.75).
+           Andy's own direct testing established this precisely: the
+           ghosting/misalignment he found is repeatably present at the
+           original, narrower default split, and repeatably absent once
+           the editor pane is widened via the resize handle. Rather than
+           continuing to chase the underlying Edge-specific rendering
+           cause (still not identified despite extensive attempts, see
+           the forceScrollResync/forceLayoutReflow/ResizeObserver fixes
+           further down, none of which fully resolved it on their own),
+           this sidesteps the problem directly by starting at a width
+           Andy has already confirmed avoids it, rather than a narrower
+           one known to trigger it. Still fully user-resizable via the
+           v-handle afterward, same as before — this only changes where
+           it STARTS. -->
+      <div class="pane-lbl" id="editorPaneLbl">blank_code_editor.py</div>
       <div class="editor-area">
         <div class="line-nums" id="lineNums">1</div>
         <div class="hl-wrap">
@@ -407,6 +440,11 @@ var STARTER_CODE =
    each run, so student code can do e.g. open("data.txt").
    ============================================================ */
 var TABS_STORAGE_KEY = "j277_tabs_" + PAGE_ID;
+// FIX: no second file tab this time — genuinely different from every
+// earlier challenge in this series. "writelines_example.txt" is opened
+// in "w" (write) mode, which creates the file fresh on every run rather
+// than needing to already exist, so there's nothing to pre-load here.
+// Back to just the single main .py tab.
 var tabs = [{ id: "main", type: "code", label: CHALLENGE_FILENAME + ".py" }];
 var activeTabId = "main";
 var tabIdCounter = 0;
@@ -697,7 +735,23 @@ function updateLineNums() {
   lineNums.scrollTop = codeTa.scrollTop;
 }
 function updateHighlight() {
-  hlOverlay.innerHTML = highlightPython(codeTa.value) + "\n";
+  // FIX: this used to append an extra trailing "\n" after the highlighted
+  // HTML (hlOverlay.innerHTML = highlightPython(codeTa.value) + "\n"),
+  // giving the overlay one more line than codeTa.value and the gutter
+  // actually have — confirmed directly: split("\n") on the overlay's own
+  // textContent returned 35 "lines" for a genuinely 34-line file, while
+  // codeTa.value and the gutter both correctly returned 34. Found while
+  // investigating a click-misalignment report from Andy; extensive testing
+  // (initial load, scrolling, multiple viewport sizes and device pixel
+  // ratios, font-size changes) never reproduced any VISIBLE height
+  // difference from this specific discrepancy in Chromium — a single
+  // trailing newline right before a pre-formatted block's end doesn't
+  // render as an extra visual row — but it's still a genuine correctness
+  // gap worth removing outright rather than leaving in, since a mismatched
+  // line count between the overlay and the real textarea content is
+  // inherently fragile and not something to justify keeping just because
+  // one browser engine happens to render around it harmlessly.
+  hlOverlay.innerHTML = highlightPython(codeTa.value);
   hlOverlay.scrollTop = codeTa.scrollTop;
   hlOverlay.scrollLeft = codeTa.scrollLeft;
 }
@@ -707,10 +761,35 @@ function applyFontSize() {
 }
 
 codeTa.addEventListener("input", function () { updateLineNums(); updateHighlight(); saveCode(); });
+
+/* FIX: continuation of the forceLayoutReflow() fix above (same root
+   report from Andy — Edge-specific misalignment, still not reproducible
+   directly in Chromium despite extensive attempts). Andy's follow-up
+   screenshot showed a new, more specific symptom worth addressing on its
+   own: doing Ctrl/Cmd+A (select all) then scrolling shows what he
+   describes as "ghost" or duplicate text — the browser's native text-
+   selection highlight (rendered by codeTa itself) appearing at a
+   different vertical position than the syntax-highlighted text
+   (rendered by hlOverlay), as if two overlapping copies exist. Browsers
+   often composite an active text selection through a different internal
+   rendering path than plain text, which is a plausible reason this
+   specific combination (an active selection, THEN scrolling) could
+   surface a stale, partially-repainted frame that plain scrolling alone
+   wouldn't. The scroll listener below already correctly syncs scrollTop
+   on every scroll event; what it's missing is any guarantee that the
+   browser actually COMMITS that new position to screen before the next
+   paint, rather than potentially compositing an old frame alongside the
+   new one. Forcing a synchronous reflow (reading offsetHeight — the same
+   established technique as forceLayoutReflow() itself) on hlOverlay and
+   lineNums immediately after each scroll addresses that gap directly,
+   without needing to reproduce the exact Edge-specific compositing
+   quirk that causes it. */
 codeTa.addEventListener("scroll", function () {
   lineNums.scrollTop = codeTa.scrollTop;
   hlOverlay.scrollTop = codeTa.scrollTop;
   hlOverlay.scrollLeft = codeTa.scrollLeft;
+  void hlOverlay.offsetHeight;
+  void lineNums.offsetHeight;
 });
 
 /* ── Editor keyboard behaviour: Tab / auto-indent / dedent / run ── */
@@ -959,13 +1038,13 @@ runBtn.addEventListener("click", function () {
         row.style.cssText = "display:flex;align-items:baseline;gap:4px;margin:1px 0;flex-wrap:wrap;";
         if (promptText) {
           var span = document.createElement("span");
-          span.style.cssText = "color:var(--text);font-family:'Space Mono',monospace;white-space:pre;";
+          span.style.cssText = "color:var(--text);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre;";
           span.textContent = promptText;
           row.appendChild(span);
         }
         var inp = document.createElement("input");
         inp.type = "text";
-        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
+        inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:inherit;padding:0 2px;min-width:80px;flex:1;";
         inp.setAttribute("autocomplete", "off"); inp.setAttribute("spellcheck", "false");
         row.appendChild(inp);
         output.appendChild(row);
@@ -975,7 +1054,7 @@ runBtn.addEventListener("click", function () {
           if (e.key === "Enter") {
             var val = inp.value; inp.remove();
             var typed = document.createElement("span");
-            typed.style.cssText = "color:var(--success);font-family:'Space Mono',monospace;";
+            typed.style.cssText = "color:var(--success);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;";
             typed.textContent = val;
             row.appendChild(typed);
             output.scrollTop = output.scrollHeight;
@@ -992,7 +1071,7 @@ runBtn.addEventListener("click", function () {
         if (_outLines >= MAX_OUT) {
           if (_outLines === MAX_OUT) {
             var cap = document.createElement("div");
-            cap.style.cssText = "font-family:'Space Mono',monospace;color:var(--warn);font-style:italic;";
+            cap.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;color:var(--warn);font-style:italic;";
             cap.textContent = "\u2026 output capped at " + MAX_OUT + " lines — checking for infinite loop\u2026";
             output.appendChild(cap);
           }
@@ -1163,7 +1242,7 @@ runBtn.addEventListener("click", function () {
             if (i < lines.length) {
               var codeLineTrim = lines[i].trim();
               var isFrameOrErrorLine = /^File "/.test(codeLineTrim) ||
-                /^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(codeLineTrim);
+                /^([A-Z][A-Za-z0-9_]*(Error|Exception|Warning)|StopIteration|StopAsyncIteration|GeneratorExit|KeyboardInterrupt|SystemExit)\b/.test(codeLineTrim);
               if (codeLineTrim && !isFrameOrErrorLine) {
                 if (isStudentFrame) studentCode.push(lines[i]);
                 i++;
@@ -1173,7 +1252,32 @@ runBtn.addEventListener("click", function () {
             continue;
           }
 
-          if (/^(SyntaxError|NameError|TypeError|ValueError|IndentationError|AttributeError|IndexError|KeyError|ZeroDivisionError|RecursionError|Exception)/.test(t)) {
+          if (/^([A-Z][A-Za-z0-9_]*(Error|Exception|Warning)|StopIteration|StopAsyncIteration|GeneratorExit|KeyboardInterrupt|SystemExit)\b/.test(t)) {
+            // FIX: this regex USED TO be a hardcoded allowlist of specific
+            // error type names (SyntaxError|NameError|TypeError|...) — found
+            // and fixed after a real test with ModuleNotFoundError (from
+            // Random Challenge 01's own "import randon" typo) revealed it
+            // silently fell through this check entirely, since
+            // "ModuleNotFoundError" wasn't in the list. That meant no line-
+            // number translation happened at all for that error, and
+            // several other common, real Python exceptions (ImportError,
+            // FileNotFoundError, AssertionError, StopIteration,
+            // KeyboardInterrupt, SystemExit, OverflowError,
+            // UnboundLocalError, and any other/future/custom exception
+            // type) would have hit the exact same silent gap — genuinely
+            // any error type not already hardcoded into the old list.
+            // Replaced with a general pattern instead of an ever-growing
+            // list: any CapitalizedIdentifier ending in Error/Exception/
+            // Warning (covers the vast majority of Python's own built-in
+            // and any custom exception types, by Python's own naming
+            // convention), plus the handful of built-in exceptions that
+            // don't follow that suffix (StopIteration, KeyboardInterrupt,
+            // SystemExit, etc.). Verified this new pattern correctly
+            // matches all of the above while still correctly NOT matching
+            // ordinary capitalized student print() output (e.g. "Colour 2
+            // is red" from an earlier Turtle-adjacent challenge) — the
+            // Error/Exception/Warning suffix requirement is what prevents
+            // false positives on ordinary text.
             // SyntaxError/IndentationError messages sometimes embed their
             // OWN line reference directly in the text itself — e.g.
             // "...expected an indented block after 'if' statement on line
@@ -1185,10 +1289,27 @@ runBtn.addEventListener("click", function () {
             // own code range, so a genuine empty-block error a student
             // introduces themselves (e.g. an empty if:/for:/while: body)
             // points at their own line number instead of an internal one.
-            t = t.replace(/\bon line (\d+)\b/, function (whole, numStr) {
+            //
+            // FIX: originally only matched "on line N" — found and fixed
+            // after a real test with Read/Write Challenge 08's own
+            // "file = open(..., \"w)" (missing closing quote) revealed a
+            // DIFFERENT embedded-reference format entirely: Python's own
+            // message for this is "unterminated string literal (detected
+            // at line N)", confirmed directly that N is the same real,
+            // raw wrapped-file line number as the outer traceback's own
+            // reference — meaning without this fix, a student would see
+            // TWO different line numbers in the same error message: a
+            // correctly-translated one from the outer "Line X —" prefix,
+            // and this embedded one left showing the internal, wrapped-
+            // file number they never actually see. The same "detected at
+            // line N" phrasing is also how Python reports an unterminated
+            // TRIPLE-quoted string, so this isn't specific to one single
+            // error message — a shared pattern worth handling generally
+            // rather than matching one exact message string.
+            t = t.replace(/\b(on|detected at) line (\d+)\b/, function (whole, prefix, numStr) {
               var n = parseInt(numStr, 10);
               if (n >= studentRangeStart && n <= studentRangeEnd) {
-                return "on line " + (n - WRAPPER_HEADER_LINES);
+                return prefix + " line " + (n - WRAPPER_HEADER_LINES);
               }
               return whole;
             });
@@ -1228,7 +1349,7 @@ runBtn.addEventListener("click", function () {
       } else if (cleaned.indexOf("SystemExit") === -1) {
         var d = document.createElement("div");
         d.className = "out-err";
-        d.style.cssText = "font-family:'Space Mono',monospace;white-space:pre-wrap;";
+        d.style.cssText = "font-family:Menlo,Monaco,Consolas,'Courier New',monospace;white-space:pre-wrap;";
         d.textContent = cleaned.trim();
         output.appendChild(d);
         statusDot.classList.add("dot-err");
@@ -1267,7 +1388,21 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("mousemove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.clientX - startX)), totalW - 80);
+    // FIX: minimum editor-pane width raised from 80px to 400px. Andy's
+    // own precise, repeated testing established that a narrow editor
+    // pane is specifically what triggers the gutter/overlay "ghosting"
+    // he found on Edge (present when narrowed via this exact handle,
+    // absent again once widened back) — not reproducible directly in
+    // Chromium despite trying his exact steps, in either order (select
+    // before scrolling, and scrolling before selecting). Since the
+    // underlying Edge-side cause still isn't identified, this keeps the
+    // pane out of the width range Andy actually observed triggering it,
+    // rather than only fixing the STARTING width (the flex:3 change
+    // elsewhere) while still letting a student drag right back into the
+    // same narrow, problematic range by hand. 400px is comfortably wider
+    // than the visibly narrow width shown in Andy's own screenshots of
+    // the bug, which is why it doesn't just track that boundary exactly.
+    var newW = Math.min(Math.max(400, startW + (e.clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   });
 
@@ -1289,7 +1424,9 @@ runBtn.addEventListener("click", function () {
   document.addEventListener("touchmove", function (e) {
     if (!isResizing) return;
     var totalW = ceBody.offsetWidth - vHandle.offsetWidth;
-    var newW = Math.min(Math.max(80, startW + (e.touches[0].clientX - startX)), totalW - 80);
+    // Same 400px minimum as the mouse-drag handler above, for the same
+    // reason — keeps touch-dragging out of the same narrow range too.
+    var newW = Math.min(Math.max(400, startW + (e.touches[0].clientX - startX)), totalW - 80);
     editorPane.style.flex = "0 0 " + newW + "px";
   }, { passive: true });
   document.addEventListener("touchend", function () {
@@ -1424,6 +1561,150 @@ runBtn.addEventListener("click", function () {
 applyFontSize();
 updateLineNums();
 updateHighlight();
+
+/* FIX: gutter/overlay scroll desync after page load, reported by Andy on
+   Edge and Brave (both Chromium-based, ruling out a WebKit/Safari-specific
+   cause) — confirmed the actual bug from his own screenshot + follow-up
+   ("the cursor is above line 1"): the gutter was still showing "1, 2, 3…"
+   from the very top, while the textarea's OWN scroll position had already
+   moved further down, so a click that looked like it was on line 6 (based
+   on the gutter's own numbering) actually landed on whatever line was
+   REALLY there — nowhere near line 6 at all.
+
+   Root cause: Chromium-based browsers independently restore a <textarea>'s
+   own scroll position (and sometimes its edited value) across a page
+   reload or back/forward navigation, completely separately from normal
+   page-level scroll restoration — a real, documented browser behaviour,
+   not something this widget's own JS ever asked for. Confirmed with
+   extensive testing that our OWN scroll-sync logic (the codeTa "scroll"
+   event listener, and updateLineNums()/updateHighlight() both syncing
+   line-nums/hl-overlay's scrollTop to codeTa's) works correctly for every
+   scroll actually caused by user interaction — mouse wheel, dragging the
+   scrollbar, keyboard navigation, all correctly kept in sync in testing.
+   The gap is specifically this ONE-TIME, browser-native restoration,
+   which can happen AFTER this script's own synchronous init code below
+   already ran (and after the "scroll" listener was already attached) —
+   without necessarily firing a normal "scroll" event our listener would
+   otherwise have caught, since it's a low-level browser mechanism, not a
+   user-driven scroll action.
+
+   Fix: force an explicit re-sync at two further points beyond the
+   synchronous init above, specifically chosen to catch this AFTER any
+   native restoration has had a chance to happen — the window "load"
+   event (fires once every resource has finished loading, later than this
+   script's own synchronous execution) and a short setTimeout shortly
+   after that (covers the case where restoration itself is slightly
+   deferred beyond "load", which was observed to matter in testing).
+   Harmless no-op in the ordinary case where nothing was ever restored,
+   since re-syncing to an unchanged scrollTop of 0 changes nothing. */
+function forceScrollResync() {
+  lineNums.scrollTop = codeTa.scrollTop;
+  hlOverlay.scrollTop = codeTa.scrollTop;
+}
+
+/* FIX: cursor/click misalignment reported by Andy on Edge, reproduced with
+   a very specific, reliable pattern he found himself: happens on initial
+   load whenever the code+comments extend beyond the visible area (i.e.
+   codeTa needs to scroll at all), and is fixed immediately just by
+   dragging the editor/output resize handle even slightly — which changes
+   editorPane's width via editorPane.style.flex, forcing the browser to
+   recompute layout for everything inside it (codeTa/hlOverlay/lineNums).
+
+   Despite extensive attempts — the constrained height baked directly into
+   the stylesheet from the very first paint (not injected afterward),
+   testing immediately on load before any of this script's own timers can
+   fire, testing both with and without scrolling first — this could not be
+   reproduced in Chromium directly, even though Edge shares the same
+   underlying engine; likely a genuine Edge-specific layout/rendering
+   timing quirk on the very first flex layout pass for a scrollable
+   textarea, not something reachable by directly inspecting the DOM state
+   Chromium itself produces.
+
+   Given Andy's own fix is concrete and reliable (dragging the handle
+   always corrects it), replicate the SAME mechanism automatically rather
+   than trying to prevent whatever the underlying timing issue actually
+   is: force editorPane's width to be explicitly recalculated the same way
+   dragging does, immediately after load. Reading offsetHeight straight
+   after the style change is a standard, well-known way to force a
+   synchronous layout recalculation in every browser (browsers batch style
+   changes lazily otherwise) — without it, the assignment alone wouldn't
+   reliably force layout to happen before the next paint. Confirmed
+   working on the actual live embed (Random Challenge 04) after this fix
+   went out — Andy confirmed the misalignment stopped happening. */
+function forceLayoutReflow() {
+  var currentWidth = editorPane.getBoundingClientRect().width;
+  // GUARD: skip entirely when currentWidth is 0 (or otherwise not a real,
+  // rendered size) — genuinely found the hard way, not anticipated in
+  // advance: this file's own new poem.txt tab hides the whole .ce-body
+  // (editorPane's own parent) via display:none when a text-file tab is
+  // active, which makes editorPane's measured width become exactly 0.
+  // The ResizeObserver below sees that as a genuine width change and
+  // calls this function, which — without this guard — would then set
+  // editorPane.style.flex = "0 0 0px", PERMANENTLY locking it at zero
+  // width. Confirmed directly: switching to poem.txt and back left
+  // codeTa's own bounding box at just 20px wide, not its correct ~600+px,
+  // for exactly this reason. Every earlier challenge in this fleet only
+  // ever had the one .py tab, so .ce-body was never hidden this way —
+  // this interaction between an existing fix and a genuinely new feature
+  // (multi-tab files) had no way to surface until this file specifically.
+  if (currentWidth <= 0) return;
+  editorPane.style.flex = "0 0 " + currentWidth + "px";
+  void editorPane.offsetHeight; // forces synchronous layout recalculation
+}
+
+window.addEventListener("load", function () {
+  forceScrollResync();
+  forceLayoutReflow();
+  setTimeout(function () {
+    forceScrollResync();
+    forceLayoutReflow();
+  }, 250);
+});
+
+/* FIX: continuation of the two fixes directly above — Andy's follow-up
+   testing pinned down something neither of them actually covers. His own
+   precise sequence: ghosting present at the pane's initial width : ->
+   dragging the v-handle WIDER makes it correct : -> deselecting, dragging
+   the handle NARROWER again, then selecting text once more brings the
+   ghosting straight back. That's a genuinely different pattern from
+   "needs one reflow at load" — it tracks the pane's WIDTH at the moment
+   of drag, not just whether a reflow ever happened in the past. Confirmed
+   directly that a horizontal scrollbar appearing on codeTa at narrow
+   widths does NOT change its clientHeight relative to hlOverlay in
+   Chromium (both stayed identical, 709px, even with genuine horizontal
+   overflow present) — so that specific mechanism isn't it, at least on
+   this engine, but the width-correlation itself is Andy's own directly
+   observed, repeated finding and worth building around regardless of
+   whether the exact Edge-side cause is identified.
+
+   forceLayoutReflow() above only runs a fixed few times right after load
+   — if the pane's width at THAT moment doesn't trigger the bug but a
+   LATER width (after the student drags the handle themselves) does, load-
+   time reflows can't help, since they've already finished by the time the
+   problematic width is ever reached. A ResizeObserver watching the pane's
+   actual size continuously closes that gap: every genuine width change,
+   whenever and for whatever reason it happens (dragging the handle,
+   the auto-resize postMessage changing the iframe's own size, anything
+   else), immediately re-runs both fixes at the NEW width, rather than
+   only ever running once, early, at whatever width happened to be
+   current back at page load. */
+if (window.ResizeObserver) {
+  // GUARD: forceLayoutReflow() itself sets editorPane's own width, which
+  // would otherwise re-trigger this very observer — comparing against the
+  // last width actually seen (rounded, to absorb harmless sub-pixel
+  // measurement noise) before doing anything is what stops that from
+  // looping forever, not just "hoping" a resize triggered by our own fix
+  // doesn't get observed.
+  var lastObservedWidth = Math.round(editorPane.getBoundingClientRect().width);
+  new ResizeObserver(function () {
+    var w = Math.round(editorPane.getBoundingClientRect().width);
+    if (w === lastObservedWidth) return;
+    lastObservedWidth = w;
+    forceScrollResync();
+    forceLayoutReflow();
+  }).observe(editorPane);
+}
 </script>
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
