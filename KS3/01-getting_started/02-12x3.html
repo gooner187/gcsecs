@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Python does maths — J277 Output Viewer</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" rel="stylesheet"/>
 <style>
 /* ============================================================
@@ -65,7 +65,7 @@ body{
   border-top-color:var(--outer-border); border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .title{
-  font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:var(--text);
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; font-weight:700; color:var(--text);
   display:flex; align-items:center; gap:6px; white-space:nowrap;
 }
 .title i{ color:var(--accent); font-size:15px; }
@@ -92,11 +92,11 @@ body{
   border-left-color:var(--outer-border); border-right-color:var(--outer-border);
 }
 .pane-lbl{
-  font-size:9px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.07em;
+  font-size:9px; font-family:Menlo,Monaco,Consolas,'Courier New',monospace; text-transform:uppercase; letter-spacing:.07em;
   color:var(--text-muted); padding:5px 10px; border-bottom:0.5px solid var(--border); background:var(--surface2);
 }
 .output{
-  font-family:'Space Mono',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
+  font-family:Menlo,Monaco,Consolas,'Courier New',monospace; font-size:12px; line-height:1.7; padding:10px 12px;
   background:var(--surface2); flex:1; overflow-y:auto; white-space:pre-wrap; color:var(--text);
   /* Caps how tall this pane can grow as the interactive session
      accumulates more exchanges — without this, the pane (and via
@@ -119,13 +119,13 @@ body{
 .footer-left{ display:flex; align-items:center; gap:6px; }
 .dot{ width:7px; height:7px; border-radius:50%; background:var(--success); flex-shrink:0; }
 .dot-err{ background:var(--error); }
-.footer-txt{ font-size:10px; color:var(--text-muted); font-family:'Space Mono',monospace; }
-.hint{ font-size:9.5px; color:var(--text-muted); font-family:'Space Mono',monospace; }
+.footer-txt{ font-size:10px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
+.hint{ font-size:9.5px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; }
 
 /* Infinite-loop / warning panel (identical to the Code Editor's) */
 .warn-panel{ margin:4px 0; padding:10px 12px; background:rgba(240,153,123,0.1); border:0.5px solid var(--warn); border-radius:8px; }
 .warn-head{ font-size:13px; font-weight:600; color:var(--warn); margin-bottom:4px; }
-.warn-detail{ font-size:11px; color:var(--text-muted); font-family:'Space Mono',monospace; margin-bottom:10px; line-height:1.6; }
+.warn-detail{ font-size:11px; color:var(--text-muted); font-family:Menlo,Monaco,Consolas,'Courier New',monospace; margin-bottom:10px; line-height:1.6; }
 .warn-btns{ display:flex; gap:7px; flex-wrap:wrap; }
 .warn-btn{
   display:inline-flex; align-items:center; gap:4px; border-radius:6px; padding:5px 11px; font-size:11px;
@@ -391,7 +391,7 @@ function promptForExpression(mySessionId) {
     row.appendChild(document.createTextNode(">>> "));
     var inp = document.createElement("input");
     inp.type = "text";
-    inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:inherit;padding:0 2px;min-width:70px;";
+    inp.style.cssText = "background:transparent;border:none;border-bottom:1.5px solid var(--accent);outline:none;color:var(--accent);font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:inherit;padding:0 2px;min-width:70px;";
     inp.setAttribute("autocomplete", "off");
     inp.setAttribute("spellcheck", "false");
     row.appendChild(inp);
@@ -420,7 +420,7 @@ async function interactiveLoop(mySessionId) {
       continue;
     }
     appendStatic(">>> " + typed + "\n");
-    statusTxt.textContent = "running\u2026";
+    statusTxt.textContent = "running…";
     var evalResult = await evaluatePythonExpression(typed);
     if (mySessionId !== currentSessionId) return;
     appendStatic(evalResult.text + "\n");
@@ -429,7 +429,7 @@ async function interactiveLoop(mySessionId) {
       statusTxt.textContent = "error";
     } else {
       statusDot.classList.remove("dot-err");
-      statusTxt.textContent = "Python 3.12 \u00b7 ready";
+      statusTxt.textContent = "Python 3.12 · ready";
     }
   }
 }
@@ -439,7 +439,7 @@ async function playSequence(mySessionId) {
   statusDot.classList.remove("dot-err");
 
   appendStatic(">>>");
-  statusTxt.textContent = pyodideReady ? "running\u2026" : "loading Python runtime\u2026";
+  statusTxt.textContent = pyodideReady ? "running…" : "loading Python runtime…";
   await wait(350);
   if (mySessionId !== currentSessionId) return;
 
@@ -458,7 +458,7 @@ async function playSequence(mySessionId) {
     statusDot.classList.add("dot-err");
     statusTxt.textContent = "error";
   } else {
-    statusTxt.textContent = "Python 3.12 \u00b7 ready";
+    statusTxt.textContent = "Python 3.12 · ready";
   }
 
   interactiveLoop(mySessionId); // deliberately not awaited — runs indefinitely until superseded
@@ -571,5 +571,6 @@ startNewSession();
 /* ── Init ──────────────────────────────────────────────────── */
 applyFontSize();
 </script>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
