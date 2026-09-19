@@ -1,1 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Magic 8 Ball</title>
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+}
+.wrap{ background:#ffffff; border-radius:12px; padding:2rem 1rem; max-width:400px; margin:0 auto; text-align:center; position:relative; }
+#ballWrap{ width:300px; height:300px; margin:0 auto; cursor:pointer; perspective:900px; }
+#flipper{
+  position:relative; width:100%; height:100%; transform-style:preserve-3d;
+  transition:transform 0.65s cubic-bezier(.4,0,.2,1);
+}
+#frontFace, #backFace{
+  position:absolute; inset:0; border-radius:50%; background:#141414;
+  backface-visibility:hidden; display:flex; align-items:center; justify-content:center;
+}
+#backFace{ transform:rotateY(180deg); }
+.eight-circle{
+  width:112px; height:112px; border-radius:50%; background:#f2f2f2;
+  display:flex; align-items:center; justify-content:center;
+}
+.eight-circle span{ font-size:58px; font-weight:700; color:#141414; font-family:Arial,sans-serif; }
+#windowEl{
+  width:210px; height:210px; border-radius:50%; background:#0c1a3d;
+  overflow:hidden; display:flex; align-items:center; justify-content:center;
+}
+#dieTriangle{
+  position:relative; width:148px; height:126px; background:#1c2f6e;
+  clip-path:polygon(50% 2%, 2% 98%, 98% 98%);
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:20px; box-sizing:border-box;
+}
+#answerText{
+  display:block; width:88px; color:#dce6ff; font-size:10.5px; font-weight:500;
+  line-height:1.25; text-align:center; opacity:0; transition:opacity 0.35s;
+}
+#shakeLabel{ margin-top:14px; font-size:13px; color:#5f5e5a; }
+#ballWrap:focus-visible{ outline:2px solid #378ADD; outline-offset:6px; border-radius:50%; }
 
+/* ── Reset button — corner control, outside the ball itself ── */
+#resetBtn{
+  position:absolute; top:6px; right:6px; width:32px; height:32px; border-radius:50%;
+  border:1px solid #d9d9d9; background:#ffffff; color:#5f5e5a; font-size:16px; line-height:1;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  transition:background .15s,color .15s,border-color .15s;
+}
+#resetBtn:hover{ background:#f2f2f2; color:#141414; border-color:#bbbbbb; }
+#resetBtn:focus-visible{ outline:2px solid #378ADD; outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="widgetRoot">
+  <button type="button" id="resetBtn" title="Reset to start" aria-label="Reset the magic 8 ball">&#8634;</button>
+  <div id="ballWrap" role="button" tabindex="0" aria-label="Press to shake the magic 8 ball">
+    <div id="flipper">
+      <div id="frontFace">
+        <div class="eight-circle"><span>8</span></div>
+      </div>
+      <div id="backFace">
+        <div id="windowEl">
+          <div id="dieTriangle">
+            <span id="answerText"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p id="shakeLabel">Press to shake</p>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   ANSWERS
+   ------------------------------------------------------------
+   The exact 13 responses from the real magic8.py Code Editor
+   build (magic-8-ball.html), preserved verbatim — including the
+   duplicate "My sources say no" for two different dice values,
+   and the spelling quirks ("Cannot pedict now", "As i see it").
+   This widget is deliberately pure JS, not real Pyodide/Python —
+   the logic here is trivially "pick 1 of 13 fixed strings", and
+   running that through a full Python runtime would add a real,
+   multi-second load delay before the first shake could complete,
+   for no actual benefit. If magic-8-ball.html's responses are
+   ever edited, this array needs updating to match by hand — it's
+   not automatically kept in sync.
+   ============================================================ */
+var answers = ["Most likely","Yes in due time","You will have to wait","Ask again later","My sources say no","Go for it!","Are you kidding?","My sources say no","Very doubtful","Cannot pedict now","As i see it, yes","My reply is no","Don't bet on it"];
+
+var ballWrap = document.getElementById("ballWrap");
+var flipper = document.getElementById("flipper");
+var dieTriangle = document.getElementById("dieTriangle");
+var answerText = document.getElementById("answerText");
+var shakeLabel = document.getElementById("shakeLabel");
+var resetBtn = document.getElementById("resetBtn");
+var busy = false;
+var flipped = false;
+
+/* Tracks setTimeout ids from an in-progress shake sequence, so Reset can
+   cancel them — without this, resetting mid-shake would still have
+   revealAnswer()'s queued callbacks fire afterwards and silently undo
+   the reset a moment later. */
+var shakeTimeouts = [];
+function clearShakeTimeouts() {
+  shakeTimeouts.forEach(function (id) { clearTimeout(id); });
+  shakeTimeouts = [];
+}
+
+/* ============================================================
+   SHAKE SEQUENCE — approved through several rounds of mockup
+   iteration in chat before this was built for real:
+   1) First click: the ball flips over (3D card-flip technique —
+      front face shows the 8, back face shows the window, each
+      with backface-visibility:hidden so only one is ever seen).
+   2) The triangle sinks, spins, and fades as if submerging.
+   3) It floats back up, spinning to land upright, and the answer
+      fades in — sized/positioned to stay inside the triangle's
+      visible area (confirmed against a real screenshot of text
+      overflowing the clip-path in an earlier round; text is
+      narrower than the triangle's base and sits toward the
+      bottom, where the triangle is widest).
+   Once flipped, later clicks re-shake without re-flipping the
+   ball (you're already looking at the window). Clicks mid-
+   sequence are ignored (busy guard), not queued or restarted.
+   ============================================================ */
+function revealAnswer() {
+  dieTriangle.style.transition = "transform 0.5s ease-in, opacity 0.5s ease-in";
+  dieTriangle.style.transform = "translateY(32px) scale(0.25) rotate(300deg)";
+  dieTriangle.style.opacity = "0.15";
+  shakeTimeouts.push(setTimeout(function () {
+    answerText.textContent = answers[Math.floor(Math.random() * answers.length)];
+    dieTriangle.style.transition = "transform 0.6s cubic-bezier(.2,.8,.3,1.2), opacity 0.6s";
+    dieTriangle.style.transform = "translateY(0) scale(1) rotate(360deg)";
+    dieTriangle.style.opacity = "1";
+    shakeTimeouts.push(setTimeout(function () {
+      answerText.style.opacity = "1";
+      dieTriangle.style.transform = "translateY(0) scale(1) rotate(0deg)";
+      dieTriangle.style.transition = "none";
+      shakeLabel.textContent = "Press to shake again";
+      busy = false;
+    }, 600));
+  }, 550));
+}
+
+function shake() {
+  if (busy) return;
+  busy = true;
+  answerText.style.opacity = "0";
+  shakeLabel.textContent = "Shaking…";
+  if (!flipped) {
+    flipper.style.transform = "rotateY(180deg)";
+    flipped = true;
+    shakeTimeouts.push(setTimeout(revealAnswer, 500));
+  } else {
+    revealAnswer();
+  }
+}
+
+ballWrap.addEventListener("click", shake);
+ballWrap.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); shake(); }
+});
+
+/* ============================================================
+   RESET — corner button, deliberately OUTSIDE #ballWrap (its own
+   element, not part of the ball) so clicking it never bubbles
+   into shake()'s click handler. Brings the ball back to exactly
+   its just-loaded state: front face showing "8" again, no answer
+   shown, ready for a fresh shake — matching the request that it
+   "shows the 8 before shaking".
+   ============================================================ */
+function resetBall() {
+  clearShakeTimeouts();
+  busy = false;
+  flipped = false;
+
+  // transition:none + forced reflow (void ...offsetWidth) before restoring
+  // the transition means the flip/triangle snap back instantly rather than
+  // visibly playing the animation in reverse.
+  flipper.style.transition = "none";
+  flipper.style.transform = "rotateY(0deg)";
+  void flipper.offsetWidth;
+  flipper.style.transition = "";
+
+  dieTriangle.style.transition = "none";
+  dieTriangle.style.transform = "translateY(0) scale(1) rotate(0deg)";
+  dieTriangle.style.opacity = "1";
+  void dieTriangle.offsetWidth;
+  dieTriangle.style.transition = "";
+
+  answerText.style.opacity = "0";
+  answerText.textContent = "";
+  shakeLabel.textContent = "Press to shake";
+}
+
+resetBtn.addEventListener("click", function (e) {
+  e.stopPropagation();
+  resetBall();
+});
+
+/* ============================================================
+   AUTO-RESIZE (identical mechanism to the other J277 widgets) —
+   the Weebly Footer Code listener already set up site-wide picks
+   this up automatically, nothing extra needed there.
+   ============================================================ */
+var PAGE_ID = (function () {
+  try {
+    var path = window.location.pathname || "default";
+    return path.replace(/[^a-zA-Z0-9_-]/g, "_") || "default";
+  } catch (e) { return "default"; }
+})();
+
+(function initAutoResize() {
+  var lastSentHeight = 0;
+  function currentHeight() {
+    return Math.ceil(document.getElementById("widgetRoot").getBoundingClientRect().height);
+  }
+  function postHeight(h) {
+    try {
+      window.parent.postMessage({ source: "j277-code-widget", pageId: PAGE_ID, height: h }, "*");
+    } catch (e) {}
+  }
+  function sendHeightIfChanged() {
+    var h = currentHeight();
+    if (h === lastSentHeight) return;
+    lastSentHeight = h;
+    postHeight(h);
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () { sendHeightIfChanged(); }).observe(document.getElementById("widgetRoot"));
+  } else {
+    setInterval(sendHeightIfChanged, 500);
+  }
+  window.addEventListener("resize", sendHeightIfChanged);
+  var retries = 0;
+  var retryTimer = setInterval(function () {
+    var h = currentHeight();
+    lastSentHeight = h;
+    postHeight(h);
+    retries++;
+    if (retries >= 20) clearInterval(retryTimer);
+  }, 1000);
+})();
+</script>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3dabb3dfe6d244529e4b9f658105edbd"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
